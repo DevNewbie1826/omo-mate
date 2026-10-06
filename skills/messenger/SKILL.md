@@ -1,6 +1,7 @@
 ---
 name: messenger
-description: Turns this OmO agent into an always-on messenger friend on a chat platform (any name, any agent-messenger platform), backed by the omosense daemon. Runs the one-time setup (name, platform, avatar), then operates "<NAME> mode": answers registered people through the bot, runs work in threads and sessions, and watches calendars, sessions and memory. Use when the user asks to set up a messenger agent or chat bot friend, says "<NAME> mode" or "turn on/off <NAME> mode", or asks about the messenger agent's status.
+description: >-
+  Turns this OmO agent into an always-on messenger friend on a chat platform (any name, any agent-messenger platform), backed by the omosense daemon. Runs the one-time setup (name, platform, avatar), then operates "<NAME> mode": answers registered people through the bot, runs work in threads and sessions, and watches calendars, sessions and memory. Use when the user asks to set up a messenger agent or chat bot friend, says "<NAME> mode" or "turn on/off <NAME> mode", or asks about the messenger agent's status.
 ---
 
 # Messenger mode

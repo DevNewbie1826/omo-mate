@@ -1,6 +1,7 @@
 ---
 name: memory-tidy
-description: Tidies the messenger agent's memory hub. It folds the memories of the user's other OmO agents into the agent's own memory repo, deduplicated, with source pointers, and cleans out stale or wrong records. It runs on an omosense `TIDY {...}` event, or when the user asks to "tidy memory" (in any language). The agent's own repo is never a source, and omosense's `tidy.enabled`, `tidy.learnOthers` and `tidy.exclude` decide what is read. Use on a TIDY event or when the user asks for a memory tidy.
+description: >-
+  Tidies the messenger agent's memory hub. It folds the memories of the user's other OmO agents into the agent's own memory repo, deduplicated, with source pointers, and cleans out stale or wrong records. It runs on an omosense `TIDY {...}` event, or when the user asks to "tidy memory" (in any language). The agent's own repo is never a source, and omosense's `tidy.enabled`, `tidy.learnOthers` and `tidy.exclude` decide what is read. Use on a TIDY event or when the user asks for a memory tidy.
 ---
 
 # Memory tidy
