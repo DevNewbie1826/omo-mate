@@ -1,0 +1,23 @@
+{
+  "name": "omo-mate",
+  "version": "0.1.0",
+  "description": "Turn an OmO agent into an always-on messenger friend (any name, any supported platform), plus a memory-tidy companion skill.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DevNewbie1826/omo-mate.git"
+  },
+  "license": "MIT",
+  "keywords": [
+    "omo",
+    "omo-plugin",
+    "skill",
+    "messenger",
+    "omosense"
+  ],
+  "pi": {
+    "skills": [
+      "skills/messenger",
+      "skills/memory-tidy"
+    ]
+  }
+}
