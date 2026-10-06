@@ -67,7 +67,7 @@ After arming, `bunx omosense daemon status` must show one client per armed sourc
 
 ## Stop
 
-Detach every monitor with its saved handle first. An armed `attach` respawns the daemon and reconnects, so a monitor left armed brings it back. Then pick one:
+Detach every monitor with its saved handle first. A connected `attach` exits when the daemon or its profile is stopped, but any later `attach` (for example a monitor that gets re-armed) spawns the daemon again and re-enables a stopped profile. Then pick one:
 
 - **Pause:** `bunx omosense daemon stop`. Stops the whole daemon, every profile on it included. It cancels nothing, discards nothing and writes no stop marker: reminders, replay journals and all other state stay in place, and the next `attach` starts it again.
 - **Permanent profile stop:** `bunx omosense daemon stop --profile <PROFILE>`. Stops only that profile's sources; the daemon and other profiles keep running. It marks every pending reminder of the profile `cancelled` (terminal, never sent later), discards the undelivered entries of the profile's replay journal, and writes `<state>/omosense-profile-<PROFILE>.stopped`, so the profile stays stopped across daemon restarts. The next `attach` of that profile re-enables it, but the cancelled reminders and discarded replay do not come back. It also works while the daemon is offline and prints one JSON result line. Use it only when the user wants that profile's pending work dropped.
