@@ -30,7 +30,7 @@ Wait for the answers. Record them in memory with the date.
 
 **R2.** Install agent-messenger (github: agent-messenger/agent-messenger) and read which platforms it supports. Then ask the Setup questions, presenting that supported list, and wait for the answer before doing anything else.
 
-**R3.** omosense is required; this skill does not work without it. Install and configure it as in [omosense](references/omosense.md): one profile for this agent with its bots, the registered people (`roles`), memory repo, `rpc` and `tidy`. If `bunx omosense --help` does not run, stop and tell the user (see the status note in that file).
+**R3.** omosense is required; this skill does not work without it. Install and configure it as in [omosense](references/omosense.md): one profile for this agent with its bots, the registered people (`roles`), memory repo, `rpc` and `tidy`. If `bunx omosense --help` does not run, stop and tell the user (see [Install](references/omosense.md#install)).
 
 ## Bot
 

@@ -22,8 +22,7 @@ Then start a session inside [Herdr](https://herdr.dev) and say: `set up messenge
 - [OmO](https://github.com/code-yeongyu/oh-my-openagent)
 - [Herdr](https://herdr.dev). The skill installs it if missing and stops if that fails.
 - [agent-messenger](https://github.com/agent-messenger/agent-messenger) for bot creation and platform calls.
-- **omosense (required).** The skills call it as `bunx omosense ...`.
-  > **Status:** the profile-based config these skills target is being finished in omosense now (not yet released). The npm package for `bunx omosense`, its install script and its release are **still to do**. Until they ship, the messenger skill stops at the omosense step and tells you so.
+- **omosense (required).** Released on npm as [`omosense`](https://www.npmjs.com/package/omosense) (latest `0.0.2`, macOS and Linux, arm64 and x64). The skills call it as `bunx omosense ...`, so there is nothing else to install.
 - Optional: [zele](https://github.com/remorses/zele) for Google accounts, and any voice transcriber you like.
 
 ## License
