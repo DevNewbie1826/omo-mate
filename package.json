@@ -1,6 +1,6 @@
 {
   "name": "omo-mate",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Turn an OmO agent into an always-on messenger friend (any name, any supported platform), plus a memory-tidy companion skill.",
   "repository": {
     "type": "git",
