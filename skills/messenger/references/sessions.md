@@ -116,7 +116,11 @@ omosense batches done completions and sends one message to the subscribed sessio
 
 1. Set `state` to `done-claimed`.
 2. Read the evidence the work session left in its final message with `omo thread read <target> --all-scope`: the merged PR, the pushed commit SHA.
-3. Verify it live, for example `gh pr view <n> --json state,mergeCommit` or `git branch -r --contains <sha>`.
+3. Verify it live with a fresh query to the remote, and match the claimed commit:
+   - Merged PR: `gh pr view <n> --repo <owner/repo> --json state,mergeCommit`. `state` must be `MERGED`, and when a SHA is claimed, `mergeCommit.oid` must equal it.
+   - Pushed commit: `git fetch <remote> <branch>` must succeed, then `git merge-base --is-ancestor <sha> FETCH_HEAD` must exit 0. `gh api repos/<owner>/<repo>/commits/<sha>` succeeding also works.
+
+   Local or cached refs aren't live evidence: `git branch -r`, `git log origin/<branch>` without a fresh fetch, or a stale clone can match a commit the remote no longer has. If any lookup fails or the commit doesn't match, the claim is unverified. Take step 6 and don't ack.
 4. Record what you found in the entry's `note` and in the `history` item.
 5. OK: run the entry's ack command as written, set `state` to `closed`, and close the session. For a webchat session, send `close_session` on the rpc socket:
 
