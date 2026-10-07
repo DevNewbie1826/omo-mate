@@ -32,19 +32,22 @@ mkdir -p ~/bots/<bot-name> && cd ~/bots/<bot-name>
 git clone https://github.com/DevNewbie1826/omo-mate.git
 ```
 
-Then, inside a [Herdr](https://herdr.dev) pane, open the session from the bot folder:
+Then, inside a [Herdr](https://herdr.dev) pane, open a plain OmO session from the bot folder:
 
 ```sh
-omo --skill omo-mate/skills/messenger --skill omo-mate/skills/memory-tidy
+omo
 ```
 
-Load both skills: the messenger skill runs memory-tidy on every `TIDY` event. OmO only auto-discovers skills from its standard skill folders, so the clone at `omo-mate/` isn't found on its own. `--skill` is how it gets loaded, and the skills show up as `/skill:messenger` and `/skill:memory-tidy`.
+and hand it the repository:
 
-Reopen the session the same way, from the bot folder, with the same flags. To continue the last session:
-
-```sh
-omo -c --skill omo-mate/skills/messenger --skill omo-mate/skills/memory-tidy
+```text
+Read https://github.com/DevNewbie1826/omo-mate — clone it here as omo-mate/,
+read skills/messenger/SKILL.md, and set up the bot following it.
 ```
+
+The session clones the repository itself, reads the skill documents, and runs the setup — no skill registration is needed. The documents are self-contained, and every command they use runs from this bot folder. On later `TIDY` events the session reads `skills/memory-tidy/SKILL.md` from the clone the same way.
+
+Optional: to also register both skills for auto-discovery, open the session with `omo --skill omo-mate/skills/messenger --skill omo-mate/skills/memory-tidy` instead (they show up as `/skill:messenger` and `/skill:memory-tidy`). Reopen with `omo -c` (plus the same flags, if you use them) to continue the last session.
 
 ### Update
 
@@ -71,7 +74,7 @@ Run every `omosense` command from the bot folder, always as `bunx omosense@0.1.0
 
 ### 1. Clone and open the session
 
-Follow [Install](#install): bot folder, clone, `omo --skill ...` in a Herdr pane.
+Follow [Install](#install): bot folder, clone, then open a session in a Herdr pane and hand it this repository (or the cloned `skills/messenger/SKILL.md` path) — no flags needed.
 
 ### 2. First run: configure the bot
 
