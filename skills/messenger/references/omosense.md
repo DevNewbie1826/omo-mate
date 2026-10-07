@@ -2,7 +2,7 @@
 
 omosense is the session host this skill depends on. It's one foreground process per session, run in the session folder. It hosts every source that folder's config enables (inbound messages, calendar and mail, reminders, herdr panes, work-session state, memory-tidy) and prints one line per event on stdout. It also sends outbound bot messages with `say`.
 
-In this page `<session folder>` is the messenger agent session's working directory. Every command is written `bunx omosense@0.1.0 ...` and is run from that folder.
+In this page `<session folder>` is the messenger agent session's working directory: the bot folder that holds the omo-mate clone (see README Install). Every command is written `bunx omosense@0.1.0 ...` and is run from that folder.
 
 ## Install
 
@@ -85,7 +85,7 @@ An `EVENT` line carries `platform`, `bot`, `kind`, `chat_id` and `chat_type` (Te
 
 `reply_to` is `null` unless the message replies to another one. Then it's `{"message_id": <id>, "text": "<replied text>"}`, plus `from` (the replied author's username) when known. On Discord `text` is present only when the replied content is available. Telegram bots can't read chat history, so `reply_to`, `quote` and your own records are the Telegram history.
 
-A `TIDY {"changed":[{repo,from,to}]}` line goes to the memory-tidy skill, run in a background write-capable worker.
+A `TIDY {"changed":[{repo,from,to}]}` line goes to the memory-tidy skill, run in a background write-capable worker. Spawn the worker with `load_skills: ["memory-tidy"]` (this session has the skill from `--skill`). If the task tool reports it missing, the worker reads `<session folder>/omo-mate/skills/memory-tidy/SKILL.md`.
 
 After arming, read the monitor's own output. The host's first line is `LOG omosense host starting dir=<session folder>/.omosense sources=...`, and the list must name the sources you expect. An armed host isn't proof the platform is connected; watch for connection errors in its `LOG` lines. Messages that arrive while the host is off aren't received. There's no queue.
 
@@ -122,6 +122,20 @@ cd <session folder> && bunx omosense@0.1.0 rpc ack <id> [<seq>]         # clear 
 `<session-id>` is this messenger session's own id, the `thread_id` or `sessionId` that `omo thread list` shows for it. Each entry in a batch carries its own ack command; run it as written.
 
 `subscribe` doesn't check the id. Liveness is checked only when a batch is due. With no subscriber the batch is dropped (`LOG rpc batch dropped: no subscriber`). With a subscriber that isn't alive the batch is dropped and the subscription removed (`LOG rpc batch dropped: subscriber <id> not alive; unsubscribed`). So on every "`<NAME>` mode" re-entry, run `rpc pending` to catch up, then `rpc subscribe <session-id>` again.
+
+## Reminders
+
+There's no CLI to add a reminder. Reminders live in `<session folder>/.omosense/state/reminders.json`, a JSON array. An entry:
+
+```json
+{"id":"<id>","at":"2026-10-08T09:00:00+09:00","platform":"telegram","target":{"chat_id":123456789},"text":"<text>"}
+```
+
+`target` is the `say` JSON without `text`. `at` is an ISO datetime with `Z` or an offset (preferred), a naive datetime (host-local time) or a date only. An unparseable `at` is sent immediately.
+
+The remind source always runs. It checks at start and every 20 seconds and sends a due entry with `say <platform> send`. Then it marks the entry `sent`, or `failed` plus `error` (never retried), or `skipped` when it's more than 6 hours late. `cancelled` is a marker you set; the host never cancels. Entries with any of these markers are left alone. After writing the file it prints `REMIND sent <entry json>`, `REMIND failed <entry json>` or `REMIND skipped-late <entry json>`.
+
+The host rewrites the whole file (a 2-space indented array) when it marks entries. So to add one, re-read the file and write the whole array back.
 
 ## Outbound
 
