@@ -14,7 +14,7 @@ omosense reads these from the messenger session folder's `.omosense/config.json`
 
 | Key | Effect |
 | --- | --- |
-| `memory` | The target: this agent's own repo id under `~/.omo/memory/agents/`. |
+| `memory` | The target: this agent's own repo id (the `AGENT_ID` in its system prompt's `<memory_metadata>`), under `~/.omo/memory/agents/<id>/repo`. |
 | `tidy.enabled` | When false, there is no `TIDY` source and manual commands print `LOG tidy disabled`. Do nothing in that case. |
 | `tidy.learnOthers` | When false, no other repo is read at all. |
 | `tidy.exclude` | Repo ids that are never read (for example another person's agent). |

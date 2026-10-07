@@ -8,7 +8,7 @@ In this page `<session folder>` is the messenger agent session's working directo
 
 omosense is the npm package `omosense`. `bunx omosense@0.1.0 ...` downloads and runs it; there's no separate installer.
 
-1. Always pin the version. An unpinned `bunx omosense` can run an older copy from bunx's cache even when npm has 0.1.0, and the old commands don't match this page.
+1. Always pin the version. An unpinned `bunx omosense` can run an older copy from bunx's cache even when npm has 0.1.0.
 2. Run `bunx omosense@0.1.0 --help`. It must print `Usage: omosense [<subcommand> [flags]]` followed by a line starting `Bare omosense runs the session host`. If it prints anything else or doesn't run, stop and show the user the output. Don't invent another install path.
 
 bunx and npx run the binary from a cache they manage. Clearing that cache while omosense runs deletes the binary under it. For a session that stays up for days, install it globally with `npm i -g omosense@0.1.0` and call `omosense ...` in place of `bunx omosense@0.1.0 ...` everywhere below.
@@ -17,7 +17,7 @@ Bot credentials are kept by agent-messenger in `~/.config/agent-messenger/`. Nev
 
 ## Config
 
-The config lives in `<session folder>/.omosense/config.json`. State lives next to it in `<session folder>/.omosense/state/` (reminders, registered threads, pending work-session completions, the memory-tidy watermark, Telegram attachments, lock files). The config is flat:
+The config lives in `<session folder>/.omosense/config.json`. State lives next to it in `<session folder>/.omosense/state/` (reminders, registered threads, pending work-session completions, the memory-tidy watermark, Telegram attachments, lock files). Two of those files are written by the agent, not by omosense: `threads.json` holds the work sessions this agent started (see [Registry](sessions.md#registry)), and `sessions.json` holds the named response sessions (see [Response sessions](sessions.md#response-sessions)). The config is flat:
 
 ```json
 {
@@ -34,12 +34,12 @@ The config lives in `<session folder>/.omosense/config.json`. State lives next t
 | Key | Meaning |
 | --- | --- |
 | `telegram.bot`, `discord.bot` | One bot name (a string) per platform, as registered in agent-messenger. Unset means that platform's listener doesn't run. |
-| `telegram.roles`, `discord.roles` | User id to role name. Any role name is allowed. `owner` is the privileged one, and anyone not listed is `other` (see SKILL.md I2). |
+| `telegram.roles`, `discord.roles` | User id to role name. For Telegram the key is the sender's numeric user id (`from.id` of the message), not an @username and not a group `chat_id`. Any role name is allowed. `owner` is the privileged one, and anyone not listed is `other` (see SKILL.md I2). |
 | `rpc.enabled` | Watch the work sessions this agent started. |
 | `rpc.all` | Watch every session, not only those registered in `threads.json`. |
 | `tidy.enabled`, `tidy.learnOthers`, `tidy.exclude` | Settings for the memory-tidy companion skill. See [memory-tidy](../../memory-tidy/SKILL.md). |
 | `herdr.enabled` | Absent means on. Only an explicit `false` turns herdr off. |
-| `memory` | This agent's own memory repo id under `~/.omo/memory/agents/`. |
+| `memory` | This agent's own memory repo id. It's the `AGENT_ID: <id>` line under `<memory_metadata>` in this agent's system prompt, and the repo is `~/.omo/memory/agents/<id>/repo`. |
 | `calendars` | Which calendars google watches. Absent means all of them. |
 | `mail` | Whether google also watches mail. |
 
@@ -74,7 +74,7 @@ Never arm two. A second omosense in the same folder can't take the sources: each
 | listen Telegram | `telegram.bot` is set | `EVENT` |
 | listen Discord | `discord.bot` is set | `EVENT` |
 | remind | always | `REMIND` |
-| google | always; needs `zele` on PATH | `CAL`, `SOON`, `MAIL` |
+| google | always; needs `zele` on PATH, otherwise it only logs an error and reports nothing (`zele` is optional) | `CAL`, `SOON`, `MAIL` |
 | herdr | always, unless `herdr.enabled` is `false` | `HERDR` |
 | rpc | `rpc.enabled` is `true` | `RPC` |
 | tidy | `tidy.enabled` is `true` | `TIDY` |
@@ -83,9 +83,30 @@ Every source can also print `LOG`. A crashed source logs `LOG omosense source <n
 
 An `EVENT` line carries `platform`, `bot`, `kind`, `chat_id` and `chat_type` (Telegram) or `channel_id` and `guild_id` (Discord), and optionally `thread_id`, `message_id`, `role`, `from`, `from_id`, `text`, `reply_to`, `forwarded`, `quote`, `attachments` (each with `path` once downloaded, or `error`), and `transcribed` or `transcribe_error` for voice.
 
+`reply_to` is `null` unless the message replies to another one. Then it's `{"message_id": <id>, "text": "<replied text>"}`, plus `from` (the replied author's username) when known. On Discord `text` is present only when the replied content is available. Telegram bots can't read chat history, so `reply_to`, `quote` and your own records are the Telegram history.
+
 A `TIDY {"changed":[{repo,from,to}]}` line goes to the memory-tidy skill, run in a background write-capable worker.
 
 After arming, read the monitor's own output. The host's first line is `LOG omosense host starting dir=<session folder>/.omosense sources=...`, and the list must name the sources you expect. An armed host isn't proof the platform is connected; watch for connection errors in its `LOG` lines. Messages that arrive while the host is off aren't received. There's no queue.
+
+## Health and recovery
+
+A dead host is silent. No lines doesn't mean healthy, and messages that arrive while it's down are lost.
+
+Run this check on every "`<NAME>` mode" re-entry, and whenever a watch you expect stays silent:
+
+1. Read the host monitor's exit summary, if it has one. An exited monitor means the host is gone.
+2. Read the pids in `<session folder>/.omosense/state/*.lock.json` and run `kill -0 <pid>` on each. If it fails, that holder is dead. A dead holder's lock is taken over by the next host, so it never blocks a restart.
+3. After re-entry, look for `LOG omosense host starting` in the monitor output. If it's missing, the host didn't start.
+
+To recover:
+
+1. Kill the old monitor handle if there is one.
+2. Arm exactly one host monitor, as in [Subscriptions](#subscriptions). Never a second: a second host logs `ALREADY_RUNNING` and retries every 30 seconds.
+3. Read its first line and check that `sources=` names the sources you expect.
+4. Run `rpc pending`, then `rpc subscribe <session-id>` (see [Work-session completions](#work-session-completions)).
+
+A long-lived session should prefer the global install (see [Install](#install)). Clearing the bunx cache deletes the binary a bunx host runs from.
 
 ## Work-session completions
 
@@ -112,10 +133,17 @@ Telegram actions: `send`, `edit`, `draft`, `typing`, `react`, `unreact`, `topic`
 
 `say` uses the platform's configured bot. Add `"bot":"<name>"` to the JSON to override it; the key is stripped before the request. With no bot configured and no override, `say` exits 2. Replies, edits and reactions use the inbound event's `bot`. Anything `say` and agent-messenger don't cover goes to the platform bot API directly, checked against its current docs (SKILL.md B3).
 
+Telegram specifics:
+
+- `draft` calls `sendMessageDraft`. It works in private chats only and shows an ephemeral preview. Finalize it with `send`.
+- `sendRichMessage` isn't a `say` action. Call the bot API directly, per SKILL.md B3.
+- Topics in the private chat with the bot need Threaded Mode, switched on in BotFather's Mini App. No Bot API method toggles it.
+
+Reading history:
+
+- Discord: `GET /channels/{channel.id}/messages` with the header `Authorization: Bot <token>`. The token is in `~/.config/agent-messenger/discordbot-credentials.json`. Never print it.
+- Telegram: none. Use `reply_to`, `quote` and your own records.
+
 ## Stop
 
 Kill the host monitor with its saved handle (`kill_bash`). The host gets the signal, stops every source, releases its locks and exits 0. There's nothing else to stop. Reminders and the rest of the state stay in `.omosense/state/`, and re-arming the monitor ("`<NAME>` mode") starts it again. While it's off, nothing is received.
-
-## Coming from omosense 0.0.x
-
-omosense 0.1.0 replaces the profile-based config with one flat config per session folder, and the old commands no longer run: an old config exits 1 naming the key, and any `--profile` flag exits 2. To move an existing setup, follow the [single-session migration guide](https://github.com/DevNewbie1826/omosense/blob/main/docs/single-session-migration.md).
