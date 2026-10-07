@@ -8,12 +8,14 @@ description: >-
 
 This skill gathers people, decisions and facts from the user's other agents into summaries in the messenger agent's own memory, and cleans out stale or wrong records. Source memories are read-only. Only the agent's own memory is written. It is the companion of the `messenger` skill, and omosense connects the two (see [omosense](../messenger/references/omosense.md)).
 
-## Settings (from the omosense profile)
+## Settings (from the session folder's omosense config)
+
+omosense reads these from the messenger session folder's `.omosense/config.json` (see [config](../messenger/references/omosense.md#config)).
 
 | Key | Effect |
 | --- | --- |
 | `memory` | The target: this agent's own repo id under `~/.omo/memory/agents/`. |
-| `tidy.enabled` | When false, there is no `TIDY` source and manual commands print `LOG tidy disabled for profile <p>`. Do nothing in that case. |
+| `tidy.enabled` | When false, there is no `TIDY` source and manual commands print `LOG tidy disabled`. Do nothing in that case. |
 | `tidy.learnOthers` | When false, no other repo is read at all. |
 | `tidy.exclude` | Repo ids that are never read (for example another person's agent). |
 
@@ -52,10 +54,10 @@ Every rule, preference or decision line carries `[scope: global]` or `[scope: <p
 
 ## Procedure
 
-0. **Run in a write-capable background worker.** The worker must use the memory tool and run omosense. Use a general work category, never a read-only explore agent.
+0. **Run in a write-capable background worker.** The worker must use the memory tool and run omosense. Use a general work category, never a read-only explore agent. Config and watermark are per folder, so the worker runs every omosense command from the messenger agent's session folder (`cd <session folder> && ...`). The lead passes that path in the worker prompt.
 1. **Get the changed set.** One path covers both cases:
    - Automatic: the `TIDY {"changed":[{"repo","from","to"}]}` line.
-   - Manual: `bunx omosense tidy --now --profile <PROFILE>` runs the same check once and prints the same line, or nothing when nothing moved. Nothing moved means there is nothing to do.
+   - Manual: `bunx omosense@0.1.0 tidy --now` runs the same check once and prints the same line, or nothing when nothing moved. Nothing moved means there is nothing to do.
    - Process only the listed repos: `git -C <repo> diff --stat <from> <to>`, then the file diffs. When `from` is null (a first run or a new repo), read the whole tree.
 2. **Classify each source.** A template-only repo gets one line in INDEX under Skipped. One-off or scratch sources (temporary worktrees, single reviews, anything under a tmp dir) get one line under One-off (`- name | cwd | outcome`) or are dropped, and get no project dir. A durable preference or person fact in them still goes to its people/ home. Real projects get a summary.
 3. **Distill.** Merge new information into the existing summary: update Status, add decisions and facts, and collapse per-session notes into outcomes and lessons. Drop progress logs. Keep each summary readable at a glance (about 6 KB at most). For large sources, fan out read-only helpers that write drafts to a temp dir, then integrate the drafts yourself.
@@ -63,12 +65,12 @@ Every rule, preference or decision line carries `[scope: global]` or `[scope: <p
 5. **Fix stale or wrong records** when newer evidence contradicts them, and give the reason in the memory-tool `reason`. A contradiction about a person goes under `## Contradiction` in their observations. Leave the card alone.
 6. **Secrets.** Never copy tokens, keys, passwords or OAuth secrets. Write `[REDACTED]`.
 7. **Self-dedupe** the target on every run: merge same-meaning or superseded lines in `people/human/observations.md`, `notes/facts/*.md` and `people/*/`, and fold any `people/<slug>-N/` duplicate dir into `people/<slug>/`. Keep each card's description exactly `Person - <Name>`, with names and handles in `aliases`.
-8. **Watermark.** After the target writes are committed, run `bunx omosense tidy --write-watermark <repo>=<to> ... --profile <PROFILE>` for exactly the repos you processed. The no-argument form marks every source as processed. Use it only when every listed repo was done and nothing newer landed. omosense owns the watermark file (`<state>/memory-tidy.json`). Do not edit it by hand.
+8. **Watermark.** After the target writes are committed, run `bunx omosense@0.1.0 tidy --write-watermark <repo>=<to> ...` for exactly the repos you processed. It logs `LOG memory-tidy watermark set <n> repos`. The no-argument form marks every current source head as processed. Use it only when every listed repo was done and nothing newer landed. omosense owns the watermark file (`<session folder>/.omosense/state/memory-tidy.json`). Do not edit it by hand.
 9. **Verify.** `git -C <each source> status --porcelain` is unchanged. Every `src:` pointer you touched resolves: `git -C ~/.omo/memory/agents/<repo>/repo cat-file -e <sha>:<path>` exits 0, or the file exists inside the hub. Report any unresolved pointer with its repo, path, sha and error.
 
 ## Getting the detail
 
-The summary is an index, not the record. For a detail question, open the `src:` pointer with `git -C <repo> show <sha>:<path>`. If there is no pointer, search the sources read-only (`git -C <repo> log -S <term> --all -p`). If a repo is gone, clone its bundle from `~/.omo/memory-backups/<date>/<name>.bundle` into a temp dir and search there. `bunx omosense tidy --backup-now --profile <PROFILE>` makes today's backup once. Backups cover every agent repo, excluded ones included. Say which source and version the answer came from.
+The summary is an index, not the record. For a detail question, open the `src:` pointer with `git -C <repo> show <sha>:<path>`. If there is no pointer, search the sources read-only (`git -C <repo> log -S <term> --all -p`). If a repo is gone, clone its bundle from `~/.omo/memory-backups/<date>/<name>.bundle` into a temp dir and search there. `bunx omosense@0.1.0 tidy --backup-now` makes today's backup once into `~/.omo/memory-backups/<date>/`. Backups cover every agent repo, excluded ones included. Say which source and version the answer came from.
 
 ## Report
 

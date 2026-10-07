@@ -1,75 +1,121 @@
-# omosense: install, config, subscriptions
+# omosense: install, config, the session host
 
-omosense is the resident daemon this skill depends on. It streams inbound messages, calendar/mail, reminders, session state and memory-tidy events to the agent, and sends outbound bot messages. Every command below is run as `bunx omosense ...`.
+omosense is the session host this skill depends on. It's one foreground process per session, run in the session folder. It hosts every source that folder's config enables (inbound messages, calendar and mail, reminders, herdr panes, work-session state, memory-tidy) and prints one line per event on stdout. It also sends outbound bot messages with `say`.
 
-> **Status (2026-10-06).** The profile-based config, the `OMOSENSE_DIR` default and the commands on this page are merged in omosense and released on npm as `omosense` (latest `0.0.2`). `bunx omosense` (or `npx omosense`) runs it with no other install step. Nothing on this page is pending.
+In this page `<session folder>` is the messenger agent session's working directory. Every command is written `bunx omosense@0.1.0 ...` and is run from that folder.
 
 ## Install
 
-omosense is the npm package `omosense`, with prebuilt binaries for macOS and Linux on arm64 and x64. `bunx omosense ...` downloads and runs it; there is no separate installer.
+omosense is the npm package `omosense`. `bunx omosense@0.1.0 ...` downloads and runs it; there's no separate installer.
 
-1. Check that `bunx omosense --help` runs and prints `Usage: omosense <subcommand> ...`. To pin a version, write `bunx omosense@<version>` (current release `0.0.2`) and use that same form in every command and monitor below. If it does not run, stop and show the user the error output. Do not invent another install path.
-2. Choose the data directory: `$OMOSENSE_DIR`, default `~/.omosense`. State lives in `$OMOSENSE_STATE`, default `<dir>/state`. The socket is `$OMOSENSE_SOCK`, default `<dir>/omosense.sock`.
-3. Write `<dir>/config.json` (shape below), then check it with `bunx omosense listen --profile <PROFILE> --dry-run`. The `PLAN` line must list the bots you expect. A config in an older shape is rejected with an error naming the offending key. Fix the key; never work around the error.
+1. Always pin the version. An unpinned `bunx omosense` can run an older copy from bunx's cache even when npm has 0.1.0, and the old commands don't match this page.
+2. Run `bunx omosense@0.1.0 --help`. It must print `Usage: omosense [<subcommand> [flags]]` followed by a line starting `Bare omosense runs the session host`. If it prints anything else or doesn't run, stop and show the user the output. Don't invent another install path.
 
-Bot credentials are kept by agent-messenger (`~/.config/agent-messenger/`). Never print tokens or put them in logs, briefs or public artifacts.
+bunx and npx run the binary from a cache they manage. Clearing that cache while omosense runs deletes the binary under it. For a session that stays up for days, install it globally with `npm i -g omosense@0.1.0` and call `omosense ...` in place of `bunx omosense@0.1.0 ...` everywhere below.
 
-`bunx` and `npx` each run omosense from an install cache they manage, and an auto-spawned daemon keeps running that cached binary. The omosense README warns that clearing the cache under a running daemon deletes its binary, and recommends `npm i -g omosense` for long-running daemons; after a global install, call `omosense ...` in place of `bunx omosense ...`.
+Bot credentials are kept by agent-messenger in `~/.config/agent-messenger/`. Never print tokens or put them in logs, briefs or public artifacts.
 
-## Config shape
+## Config
 
-Each profile is self-contained. There are no top-level `telegram`, `discord`, `owner` or `rpc` keys.
+The config lives in `<session folder>/.omosense/config.json`. State lives next to it in `<session folder>/.omosense/state/` (reminders, registered threads, pending work-session completions, the memory-tidy watermark, Telegram attachments, lock files). The config is flat:
 
 ```json
 {
-  "profiles": {
-    "<PROFILE>": {
-      "telegram": { "bots": ["<bot-name>"], "roles": { "<user-id>": "owner" } },
-      "discord":  { "bots": [], "roles": {} },
-      "rpc":      { "enabled": true, "session": null, "all": false },
-      "tidy":     { "enabled": true, "learnOthers": true, "exclude": [] },
-      "memory":   "<this agent's memory repo id>",
-      "calendars": [],
-      "mail": false
-    }
-  }
+  "telegram": { "bot": "<bot-name>", "roles": { "<user-id>": "owner" } },
+  "discord":  { "roles": {} },
+  "rpc":      { "enabled": true, "all": false },
+  "tidy":     { "enabled": true, "learnOthers": true, "exclude": [] },
+  "herdr":    { "enabled": true },
+  "memory":   "<this agent's memory repo id>",
+  "mail": false
 }
 ```
 
-- `bots`: bot names as registered in agent-messenger. An empty list means no source for that platform. `say` uses the first entry by default.
-- `roles`: account id to role name. Any role name is allowed. `owner` is the privileged one, and anyone not listed is `other` (see SKILL.md I2).
-- `rpc`: lets the agent watch the work sessions it started. `session` pins the delivery target. When it is null, the registered session is used.
-- `tidy`: settings for the memory-tidy companion skill. See [memory-tidy](../../memory-tidy/SKILL.md).
-- `memory`: this agent's own memory repo id under `~/.omo/memory/agents/`.
+| Key | Meaning |
+| --- | --- |
+| `telegram.bot`, `discord.bot` | One bot name (a string) per platform, as registered in agent-messenger. Unset means that platform's listener doesn't run. |
+| `telegram.roles`, `discord.roles` | User id to role name. Any role name is allowed. `owner` is the privileged one, and anyone not listed is `other` (see SKILL.md I2). |
+| `rpc.enabled` | Watch the work sessions this agent started. |
+| `rpc.all` | Watch every session, not only those registered in `threads.json`. |
+| `tidy.enabled`, `tidy.learnOthers`, `tidy.exclude` | Settings for the memory-tidy companion skill. See [memory-tidy](../../memory-tidy/SKILL.md). |
+| `herdr.enabled` | Absent means on. Only an explicit `false` turns herdr off. |
+| `memory` | This agent's own memory repo id under `~/.omo/memory/agents/`. |
+| `calendars` | Which calendars google watches. Absent means all of them. |
+| `mail` | Whether google also watches mail. |
+
+One bot belongs to one session. A second bot needs its own session folder with its own config.
+
+## Check the config
+
+```sh
+cd <session folder> && bunx omosense@0.1.0 listen --dry-run
+```
+
+It exits 0 and prints one `PLAN` line, for example `PLAN {"dir":"<session folder>/.omosense","discord":[],"lock":"listen","state":"<session folder>/.omosense/state","telegram":["<bot-name>"]}`. Check that each platform lists the bot you expect; a platform without a bot shows `[]`. The dry run creates no state.
+
+A config in an older shape, or with a value of the wrong type, exits 1 with a message naming the key, for example `omosense: config.json: telegram.bot must be a string`. Fix the named key. Never work around the error.
 
 ## Subscriptions
 
-Arm one persistent monitor per source the profile uses, with the command `exec bunx omosense attach <source> --profile <PROFILE>` and the filter below. Keep each handle so you can detach it later. Do not arm a source twice: duplicate subscribers cause duplicate replies.
+Arm exactly one persistent monitor per session. It runs the host, and the host runs every enabled source:
 
-| Source | Filter | Events |
+```
+command: cd <session folder> && exec bunx omosense@0.1.0
+filter:  ^(EVENT|CAL|SOON|MAIL|REMIND|HERDR|RPC|TIDY) 
+persistent: true
+```
+
+`exec` makes the stop signal reach the binary. `LOG` is left out of the filter so housekeeping lines don't spend the monitor's event budget. Keep the handle; you need it to stop.
+
+Never arm two. A second omosense in the same folder can't take the sources: each one logs `ALREADY_RUNNING` and retries every 30 seconds.
+
+| Source | Runs when | Prints |
 | --- | --- | --- |
-| `listen` | `^(EVENT\|LOG) ` | Inbound messages: `platform`, `bot`, chat/channel id, optional `thread_id`, `message_id`, `role`, `text`, `reply_to`, `forwarded`, `quote`, `attachments`, and `transcribed` or `transcribe_error` for voice |
-| `google` | `^(CAL\|SOON\|MAIL\|LOG) ` | New calendar events, starts within 30 minutes, unread mail |
-| `remind` | `^(REMIND\|LOG) ` | Reminder delivery results (`sent`, `failed`, `skipped-late`) |
-| `herdr` | `^(HERDR\|LOG) ` | Herdr panes turning blocked, or a registered pane going working to idle |
-| `rpc` | `^(RPC\|LOG) ` | Session transitions for registered work sessions (blocked, done, opened, closed). Only when `rpc.enabled` |
-| `tidy` | `^(TIDY\|LOG) ` | `TIDY {"changed":[{repo,from,to}]}`. Only when `tidy.enabled`. Hand it to the memory-tidy skill in a background write-capable worker |
+| listen Telegram | `telegram.bot` is set | `EVENT` |
+| listen Discord | `discord.bot` is set | `EVENT` |
+| remind | always | `REMIND` |
+| google | always; needs `zele` on PATH | `CAL`, `SOON`, `MAIL` |
+| herdr | always, unless `herdr.enabled` is `false` | `HERDR` |
+| rpc | `rpc.enabled` is `true` | `RPC` |
+| tidy | `tidy.enabled` is `true` | `TIDY` |
 
-- `attach` starts the daemon itself when its socket is missing or refuses connections, and reconnects on its own after an unexpected disconnect or a daemon upgrade. It exits 0 when the daemon or that profile is stopped or the monitor is killed, and non-zero when the daemon rejects the attach (unknown profile, invalid source, profile still stopping) or cannot be reached or spawned.
-- `--only <PREFIX,...>` limits a client to those line prefixes (the daemon's own `LOG omosense` notices always pass). `--name <N>` names the client in `daemon status` (default `<source>-<PROFILE>`).
-- `remind` and Discord `listen` are always-on: they keep running with no client attached, and their lines are recorded in `<state>/omosense-journal-<PROFILE>.jsonl` for replay. Other sources, Telegram `listen` included, pause when no client is attached. Detaching does not silence reminders or Discord; only a daemon stop does.
+Every source can also print `LOG`. A crashed source logs `LOG omosense source <name> crashed: <err>` and restarts with a backoff of 5 seconds, doubling up to 5 minutes.
 
-After arming, `bunx omosense daemon status` must show one client per armed source and each expected source `running` (not `paused`, `error` or `locked-by-other`). An armed subscription is not proof that the platform is connected. Watch the `LOG` lines for connection errors.
+An `EVENT` line carries `platform`, `bot`, `kind`, `chat_id` and `chat_type` (Telegram) or `channel_id` and `guild_id` (Discord), and optionally `thread_id`, `message_id`, `role`, `from`, `from_id`, `text`, `reply_to`, `forwarded`, `quote`, `attachments` (each with `path` once downloaded, or `error`), and `transcribed` or `transcribe_error` for voice.
+
+A `TIDY {"changed":[{repo,from,to}]}` line goes to the memory-tidy skill, run in a background write-capable worker.
+
+After arming, read the monitor's own output. The host's first line is `LOG omosense host starting dir=<session folder>/.omosense sources=...`, and the list must name the sources you expect. An armed host isn't proof the platform is connected; watch for connection errors in its `LOG` lines. Messages that arrive while the host is off aren't received. There's no queue.
+
+## Work-session completions
+
+With `rpc.enabled`, work sessions that turn `blocked`, `opened` or `closed` come out as `RPC` lines. A finished session (`done`) doesn't. Completions are kept in the state folder and sent as one batched message to the subscribed session once 5 minutes pass with no new completion. Nothing is re-sent until it's acked.
+
+```sh
+cd <session folder> && bunx omosense@0.1.0 rpc subscribe <session-id>   # send done batches here
+cd <session folder> && bunx omosense@0.1.0 rpc subscription             # show the subscriber
+cd <session folder> && bunx omosense@0.1.0 rpc pending                  # list un-acked completions
+cd <session folder> && bunx omosense@0.1.0 rpc ack <id> [<seq>]         # clear one
+```
+
+`<session-id>` is this messenger session's own id, the `thread_id` or `sessionId` that `omo thread list` shows for it. Each entry in a batch carries its own ack command; run it as written.
+
+`subscribe` doesn't check the id. Liveness is checked only when a batch is due. With no subscriber the batch is dropped (`LOG rpc batch dropped: no subscriber`). With a subscriber that isn't alive the batch is dropped and the subscription removed (`LOG rpc batch dropped: subscriber <id> not alive; unsubscribed`). So on every "`<NAME>` mode" re-entry, run `rpc pending` to catch up, then `rpc subscribe <session-id>` again.
 
 ## Outbound
 
-`bunx omosense say <platform> <action> '<json>' --profile <PROFILE>`. Add `{"bot":"<name>"}` to override the default bot. Replies, edits and reactions use the inbound event's `bot`. Run `bunx omosense say --help` for the current actions. Anything `say` and agent-messenger do not cover goes to the platform bot API directly, checked against its current docs (SKILL.md B3).
+```sh
+cd <session folder> && bunx omosense@0.1.0 say <platform> <action> '<json>'
+```
+
+Telegram actions: `send`, `edit`, `draft`, `typing`, `react`, `unreact`, `topic`, `topic-edit`, `photo`, `doc`. Discord actions: `send`, `edit`, `typing`, `react`, `unreact`, `thread`, `thread-edit`, `file`.
+
+`say` uses the platform's configured bot. Add `"bot":"<name>"` to the JSON to override it; the key is stripped before the request. With no bot configured and no override, `say` exits 2. Replies, edits and reactions use the inbound event's `bot`. Anything `say` and agent-messenger don't cover goes to the platform bot API directly, checked against its current docs (SKILL.md B3).
 
 ## Stop
 
-Detach every monitor with its saved handle first. A connected `attach` exits when the daemon or its profile is stopped, but any later `attach` (for example a monitor that gets re-armed) spawns the daemon again and re-enables a stopped profile. Then pick one:
+Kill the host monitor with its saved handle (`kill_bash`). The host gets the signal, stops every source, releases its locks and exits 0. There's nothing else to stop. Reminders and the rest of the state stay in `.omosense/state/`, and re-arming the monitor ("`<NAME>` mode") starts it again. While it's off, nothing is received.
 
-- **Pause:** `bunx omosense daemon stop`. Stops the whole daemon, every profile on it included. It cancels nothing, discards nothing and writes no stop marker: reminders, replay journals and all other state stay in place, and the next `attach` starts it again.
-- **Permanent profile stop:** `bunx omosense daemon stop --profile <PROFILE>`. Stops only that profile's sources; the daemon and other profiles keep running. It marks every pending reminder of the profile `cancelled` (terminal, never sent later), discards the undelivered entries of the profile's replay journal, and writes `<state>/omosense-profile-<PROFILE>.stopped`, so the profile stays stopped across daemon restarts. The next `attach` of that profile re-enables it, but the cancelled reminders and discarded replay do not come back. It also works while the daemon is offline and prints one JSON result line. Use it only when the user wants that profile's pending work dropped.
+## Coming from omosense 0.0.x
 
-Check `daemon status` afterwards. Bots, credentials and config are kept either way, so "`<NAME>` mode" turns it back on.
+omosense 0.1.0 replaces the profile-based config with one flat config per session folder, and the old commands no longer run: an old config exits 1 naming the key, and any `--profile` flag exits 2. To move an existing setup, follow the [single-session migration guide](https://github.com/DevNewbie1826/omosense/blob/main/docs/single-session-migration.md).
