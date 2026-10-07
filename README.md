@@ -20,10 +20,10 @@ Then start a session inside [Herdr](https://herdr.dev) and say: `set up messenge
 ## Requirements
 
 - [OmO](https://github.com/code-yeongyu/oh-my-openagent)
-- [Herdr](https://herdr.dev). The skill installs it if missing and stops if that fails.
+- [Herdr](https://herdr.dev). The skill installs it if missing and stops if that fails, then run `herdr integration install <agent>` for the agent you run.
 - [agent-messenger](https://github.com/agent-messenger/agent-messenger) for bot creation and platform calls.
 - **omosense (required).** Released on npm as [`omosense`](https://www.npmjs.com/package/omosense) (latest `0.1.0`, macOS and Linux, arm64 and x64). The skills call it as `bunx omosense@0.1.0 ...` (pinned, because an unpinned bunx can keep running an older cached release), so there is nothing else to install.
-- Optional: [zele](https://github.com/remorses/zele) for Google accounts, and `ffmpeg` plus `mlx_whisper` on PATH if you want voice messages transcribed (omosense runs them with `mlx-community/whisper-large-v3-turbo`; the transcriber is not configurable).
+- Optional: [zele](https://github.com/remorses/zele) on PATH for Google calendar and mail: omosense's google source always runs and reports nothing (only a LOG error) without it, and `ffmpeg` plus `mlx_whisper` on PATH if you want voice messages transcribed (omosense runs them with `mlx-community/whisper-large-v3-turbo`; the transcriber is not configurable).
 
 ## License
 
