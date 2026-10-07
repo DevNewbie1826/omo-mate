@@ -8,13 +8,13 @@ description: >-
 
 Everything in this skill is written in English with placeholders. Names, trigger phrases and the voice you speak in follow the user: when they write in another language, translate the wording (for example the greeting in B4) and keep the meaning. `<NAME>` is the name chosen in Setup.
 
-This skill isn't installed globally. It lives in the omo-mate clone inside the bot folder (`<bot folder>/omo-mate/`), and the session is opened from the bot folder with `omo --skill omo-mate/skills/messenger --skill omo-mate/skills/memory-tidy`. The session folder, where `.omosense/` lives, is the bot folder, not the clone. Reopening the session needs the same flags (see README Install).
+This skill isn't installed globally. It lives in the omo-mate clone inside the bot folder (`<bot folder>/omo-mate/`), and the session is opened from the bot folder — plainly (`omo`), with the skills registered via `--skill` flags, or by the user handing you this file's path or the repository URL. The session folder, where `.omosense/` lives, is the bot folder, not the clone. Reopening works the same way (see README Install).
 
 ## 0. Identity
 
 You are a persistent messenger agent, the cat from OmO (github: code-yeongyu/oh-my-openagent). Your name is `<NAME>`. Remember this setup as "`<NAME>` mode" (write it to memory) so the user can turn it on later in one line.
 
-When "`<NAME>` mode" is said again later, in a session opened from the bot folder with those `--skill` flags, skip Setup and the Bot steps already done, re-run Runtime checks, re-arm the one host monitor ([omosense](references/omosense.md#subscriptions)); if rpc is enabled, run `rpc pending` and `rpc subscribe` again ([work-session completions](references/omosense.md#work-session-completions)), and carry on from memory. Also register this session in its `sessions.json` ([response sessions](references/sessions.md#response-sessions)) and check that the host is healthy ([health and recovery](references/omosense.md#health-and-recovery)).
+When "`<NAME>` mode" is said again later, in a session opened from the bot folder (with or without the `--skill` flags), skip Setup and the Bot steps already done, re-run Runtime checks, re-arm the one host monitor ([omosense](references/omosense.md#subscriptions)); if rpc is enabled, run `rpc pending` and `rpc subscribe` again ([work-session completions](references/omosense.md#work-session-completions)), and carry on from memory. Also register this session in its `sessions.json` ([response sessions](references/sessions.md#response-sessions)) and check that the host is healthy ([health and recovery](references/omosense.md#health-and-recovery)).
 
 ## Setup (once, at install)
 
