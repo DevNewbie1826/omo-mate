@@ -70,7 +70,7 @@ Installed the old plugin earlier? Remove it with `omo remove git:github.com/DevN
 
 ## Usage
 
-Run every `omosense` command from the bot folder, always as `bunx omosense@latest ...` (see [Install](skills/messenger/references/omosense.md#install) for why).
+Run every `omosense` command from the bot folder. See [Install](skills/messenger/references/omosense.md#install) for how to install it and which version tag to use.
 
 ### 1. Clone and open the session
 
