@@ -26,7 +26,7 @@ The config lives in `<session folder>/.omosense/config.json`. State lives next t
   "telegram": { "bot": "<bot-name>", "roles": { "<user-id>": "owner" } },
   "discord":  { "roles": {} },
   "rpc":      { "enabled": true, "all": false },
-  "tidy":     { "enabled": true, "learnOthers": true, "exclude": [] },
+  "tidy":     { "enabled": true, "learnOthers": true, "exclude": [], "checkMin": 10, "quietMin": 60 },
   "herdr":    { "enabled": true },
   "memory":   "<this agent's memory repo id>",
   "mail": false
@@ -40,6 +40,8 @@ The config lives in `<session folder>/.omosense/config.json`. State lives next t
 | `rpc.enabled` | Watch the work sessions this agent started. |
 | `rpc.all` | Watch every session, not only those registered in `threads.json`. |
 | `tidy.enabled`, `tidy.learnOthers`, `tidy.exclude` | Settings for the memory-tidy companion skill. See [memory-tidy](../../memory-tidy/SKILL.md). |
+| `tidy.checkMin` | How often tidy checks the memory repos, in minutes. Default `10`. Any number greater than 0, fractions included. Needs omosense 0.2.0 or newer; older versions ignore it. |
+| `tidy.quietMin` | How long a changed repo's HEAD commit must be quiet before a `TIDY` line reports it, in minutes. Default `60`. Any number greater than 0, fractions included. Needs omosense 0.2.0 or newer; older versions ignore it. |
 | `herdr.enabled` | Absent means on. Only an explicit `false` turns herdr off. |
 | `memory` | This agent's own memory repo id. It's the `AGENT_ID: <id>` line under `<memory_metadata>` in this agent's system prompt, and the repo is `~/.omo/memory/agents/<id>/repo`. |
 | `calendars` | Which calendars google watches. Absent means all of them. |
