@@ -7,7 +7,7 @@ Two OmO skills that turn your agent into an always-on messenger friend: it lives
 | [`messenger`](skills/messenger/SKILL.md) | One-time setup (name, platform, avatar), then runs `<NAME> mode`: inbound messages, replies, work threads, work sessions, monitors. |
 | [`memory-tidy`](skills/memory-tidy/SKILL.md) | Folds the memories of your other OmO agents into the messenger agent's own memory, deduplicated, with source pointers. |
 
-omosense connects the two: one foreground process per agent session, run in that session's folder, that streams messages, calendar, session and `TIDY` events to the agent (one omosense per session, one bot per session).
+omosense connects the two: one foreground process per agent session, run in that session's folder, that streams messages, calendar, session and `TIDY` events to the agent (one bot, one omosense).
 
 ## Install
 
@@ -70,7 +70,7 @@ Installed the old plugin earlier? Remove it with `omo remove git:github.com/DevN
 
 ## Usage
 
-Run every `omosense` command from the bot folder, always as `bunx omosense@0.1.0 ...`.
+Run every `omosense` command from the bot folder. See [Install](skills/messenger/references/omosense.md#install) for how to install it and which version tag to use.
 
 ### 1. Clone and open the session
 
@@ -100,7 +100,7 @@ You can also write `.omosense/config.json` by hand. It's flat and every key is o
 ### 3. Check the config
 
 ```sh
-bunx omosense@0.1.0 listen --dry-run
+bunx omosense@latest listen --dry-run
 ```
 
 It exits 0, creates no state, and prints one line:
@@ -116,17 +116,17 @@ A wrong type exits 1 with a message such as `omosense: config.json: telegram.bot
 The agent runs the host itself, as one persistent monitor ([subscriptions](skills/messenger/references/omosense.md#subscriptions)):
 
 ```text
-command: cd <bot folder> && exec bunx omosense@0.1.0
+command: cd <bot folder> && exec bunx omosense@latest
 filter:  ^(EVENT|CAL|SOON|MAIL|REMIND|HERDR|RPC|TIDY) 
 ```
 
 For a one-time manual check before that, run it in the foreground:
 
 ```sh
-bunx omosense@0.1.0
+bunx omosense@latest
 ```
 
-The first line reads `LOG omosense host starting dir=<bot folder>/.omosense sources=<names>`. Ctrl-C stops it and it releases its locks. Never run it beside the agent's monitor: a second host logs `ALREADY_RUNNING` and retries every 30 s.
+Look for the `LOG omosense host starting dir=<bot folder>/.omosense sources=<names>` line (bunx may print its own resolve lines first). Ctrl-C stops it and it releases its locks. Never run it beside the agent's monitor: a second host logs `ALREADY_RUNNING` and retries every 30 s.
 
 ### 5. Run the session
 
@@ -137,7 +137,7 @@ Saying `<NAME> mode` turns the mode back on in a reopened session. Messages from
 `say` sends through the configured bot and prints the API response JSON ([outbound](skills/messenger/references/omosense.md#outbound)):
 
 ```sh
-bunx omosense@0.1.0 say telegram send '{"chat_id":123456789,"text":"hello"}'
+bunx omosense@latest say telegram send '{"chat_id":123456789,"text":"hello"}'
 ```
 
 With no bot configured and no `"bot"` override, it exits 2 with `no bot: config.json has no telegram.bot; pass {"bot":"name"} to choose one`.
@@ -175,7 +175,7 @@ To resume, reopen the session in the bot folder with the same `--skill` flags an
 - [OmO](https://github.com/code-yeongyu/oh-my-openagent)
 - [Herdr](https://herdr.dev). The skill installs it if missing and stops if that fails, then run `herdr integration install <agent>` for the agent you run.
 - [agent-messenger](https://github.com/agent-messenger/agent-messenger) for bot creation and platform calls.
-- **omosense (required).** Released on npm as [`omosense`](https://www.npmjs.com/package/omosense) (latest `0.1.0`, macOS and Linux, arm64 and x64). The skills call it as `bunx omosense@0.1.0 ...` (pinned, because an unpinned bunx can keep running an older cached release), so there is nothing else to install.
+- **omosense (required).** Released on npm as [`omosense`](https://www.npmjs.com/package/omosense) (macOS and Linux, arm64 and x64). The skills call it as `bunx omosense@latest ...` (see [Install](skills/messenger/references/omosense.md#install)), so there is nothing else to install.
 - Optional: [zele](https://github.com/remorses/zele) on PATH for Google calendar and mail: omosense's google source always runs and reports nothing (only a LOG error) without it, and `ffmpeg` plus `mlx_whisper` on PATH if you want voice messages transcribed (omosense runs them with `mlx-community/whisper-large-v3-turbo`; the transcriber is not configurable).
 
 ## License
