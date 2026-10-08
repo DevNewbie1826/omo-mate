@@ -1,6 +1,6 @@
 # Work sessions: open, message, track, close
 
-This page holds the concrete procedures behind SKILL.md's Sessions rules. In it `<session folder>` is the messenger agent session's working directory, and every omosense command is written `bunx omosense@0.1.0 ...`, run from that folder (see [omosense.md](omosense.md)).
+This page holds the concrete procedures behind SKILL.md's Sessions rules. In it `<session folder>` is the messenger agent session's working directory, and every omosense command is written `bunx omosense@latest ...`, run from that folder (rule: [Install](omosense.md#install)).
 
 ## Opening a work session
 
@@ -27,7 +27,7 @@ The standard is a webchat session tracked by rpc. omosense's rpc source sees its
 5. Register it in `threads.json` (see [Registry](#registry)) with `state` `working`.
 6. Hand off the brief with `omo thread send <target> "<brief>" --idempotency-key <msg-id> --all-scope`, then wait for its ACK as in [Messaging a session](#messaging-a-session). The brief must ask the session to end with a final message listing its evidence: the merged PR, the pushed commit SHA.
 
-Herdr fallback: some work runs as an agent started in a herdr tab. Run `herdr integration install <agent>` once, then `herdr tab create --cwd <project> --label <job> --no-focus` and `herdr pane run <pane> '<agent command>'`. rpc doesn't track that completion, so the messenger session runs the same done verification itself.
+Herdr fallback: some work runs as an agent started in a herdr tab. Run `herdr integration install <agent>` once, then `herdr tab create --cwd <project> --label <job> --no-focus` and `herdr pane run <pane> '<agent command>'`. Before sending anything to the new pane, confirm it can take input: the footer or status line is shown, the input line is empty, and the agent isn't working. A bare prompt glyph on the screen isn't enough, because the startup banner already shows it. rpc doesn't track that completion, so the messenger session runs the same done verification itself.
 
 ## Messaging a session
 
@@ -42,7 +42,7 @@ herdr pane:
 
 1. `herdr pane process-info --pane <id>`. The foreground process must be the agent, not a shell.
 2. `herdr pane read <id> --source recent-unwrapped --lines 40`. The input line must be empty, with no approval or question UI open.
-3. `herdr pane send-text <id> "<text>"`, then `herdr pane send-keys <id> enter` once.
+3. `herdr pane send-text <id> "<text>"`, then `herdr pane send-keys <id> enter` once. If, after reading the pane, the sent text is still sitting in the input line and the agent is idle, press Enter once more. Never send the text twice.
 4. `herdr pane wait-output <id> --match "ACK <msg-id>" --timeout <ms>`. On a timeout, read the pane again before deciding anything.
 
 ## Registry
@@ -104,7 +104,7 @@ The file can drift from reality. On every "`<NAME>` mode" re-entry, and whenever
 
 - `herdr pane list` and `herdr pane process-info --pane <id>`: the pane and tab still exist and the agent is alive.
 - `omo thread list --all-scope --json`: the `session_id` and `cwd` are still live.
-- `bunx omosense@0.1.0 rpc pending`: a pending completion whose entry is still `working` means set it to `done-claimed`.
+- `bunx omosense@latest rpc pending`: a pending completion whose entry is still `working` means set it to `done-claimed`.
 
 Report the drift to the owner. Never delete entries. Write every correction as a `history` item.
 
@@ -133,27 +133,12 @@ omosense batches done completions and sends one message to the subscribed sessio
 
 No script automates this. It works only if each brief asks the work session to end with a final message listing its evidence.
 
-## Response sessions
-
-`<session folder>/.omosense/state/sessions.json` lists the named response sessions, each `{"pane": "<herdr pane id>", "cwd": "<folder>"}`:
-
-```json
-{
-  "<name>": {"pane": "<herdr pane id>", "cwd": "/abs/path/<folder>"}
-}
-```
-
-On every "`<NAME>` mode" entry, a response session registers itself. It reads its own pane id from `herdr pane current` (`result.pane.pane_id`) and its cwd, then merges its own entry into the file without replacing the others.
-
-omosense 0.1.0 reads only the `family` entry's `pane`, and leaves that pane out of herdr job-done events. So a second always-on response session in the same herdr is registered as `family` in the herdr-enabled session's `sessions.json`.
-
 ## herdr commands
 
 | Command | Use |
 | --- | --- |
 | `herdr integration install <agent>` | Install herdr's integration for an agent (pi, omp, claude, codex, ...). |
 | `herdr integration status` | Show which integrations are installed. |
-| `herdr pane current` | This pane's id (`result.pane.pane_id`). |
 | `herdr pane list` | All panes. |
 | `herdr pane process-info --pane <id>` | Foreground process of a pane. |
 | `herdr pane read <id> --source recent-unwrapped --lines <N>` | Recent pane text. |

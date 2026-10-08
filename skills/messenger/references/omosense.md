@@ -2,22 +2,24 @@
 
 omosense is the session host this skill depends on. It's one foreground process per session, run in the session folder. It hosts every source that folder's config enables (inbound messages, calendar and mail, reminders, herdr panes, work-session state, memory-tidy) and prints one line per event on stdout. It also sends outbound bot messages with `say`.
 
-In this page `<session folder>` is the messenger agent session's working directory: the bot folder that holds the omo-mate clone (see README Install). Every command is written `bunx omosense@0.1.0 ...` and is run from that folder.
+In this page `<session folder>` is the messenger agent session's working directory: the bot folder that holds the omo-mate clone (see README Install). Every command is written `bunx omosense@latest ...` and is run from that folder (see [Install](#install) for why).
 
 ## Install
 
-omosense is the npm package `omosense`. `bunx omosense@0.1.0 ...` downloads and runs it; there's no separate installer.
+omosense is the npm package `omosense`. `bunx omosense@latest ...` downloads and runs it; there's no separate installer.
 
-1. Always pin the version. An unpinned `bunx omosense` can run an older copy from bunx's cache even when npm has 0.1.0.
-2. Run `bunx omosense@0.1.0 --help`. It must print `Usage: omosense [<subcommand> [flags]]` followed by a line starting `Bare omosense runs the session host`. If it prints anything else or doesn't run, stop and show the user the output. Don't invent another install path.
+1. Always use the `@latest` tag, never a bare `bunx omosense`. A bare name can keep running an older cached copy; `@latest` checks npm on every run.
+2. Run `bunx omosense@latest --help`. It must print `Usage: omosense [<subcommand> [flags]]` followed by a line starting `Bare omosense runs the session host`. If it prints anything else or doesn't run, stop and show the user the output. Don't invent another install path.
 
-bunx and npx run the binary from a cache they manage. Clearing that cache while omosense runs deletes the binary under it. For a session that stays up for days, install it globally with `npm i -g omosense@0.1.0` and call `omosense ...` in place of `bunx omosense@0.1.0 ...` everywhere below.
+`@latest` needs network on every start, and a host started this way keeps the version it started with until it's restarted.
+
+bunx and npx run the binary from a cache they manage. Clearing that cache while omosense runs deletes the binary under it. For a session that stays up for days, install it globally with `npm i -g omosense@latest` and call `omosense ...` in place of `bunx omosense@latest ...` everywhere below.
 
 Bot credentials are kept by agent-messenger in `~/.config/agent-messenger/`. Never print tokens or put them in logs, briefs or public artifacts.
 
 ## Config
 
-The config lives in `<session folder>/.omosense/config.json`. State lives next to it in `<session folder>/.omosense/state/` (reminders, registered threads, pending work-session completions, the memory-tidy watermark, Telegram attachments, lock files). Two of those files are written by the agent, not by omosense: `threads.json` holds the work sessions this agent started (see [Registry](sessions.md#registry)), and `sessions.json` holds the named response sessions (see [Response sessions](sessions.md#response-sessions)). The config is flat:
+The config lives in `<session folder>/.omosense/config.json`. State lives next to it in `<session folder>/.omosense/state/` (reminders, registered threads, pending work-session completions, the memory-tidy watermark, Telegram attachments, lock files). One of those files is written by the agent, not by omosense: `threads.json` holds the work sessions this agent started (see [Registry](sessions.md#registry)). The config is flat:
 
 ```json
 {
@@ -43,12 +45,12 @@ The config lives in `<session folder>/.omosense/config.json`. State lives next t
 | `calendars` | Which calendars google watches. Absent means all of them. |
 | `mail` | Whether google also watches mail. |
 
-One bot belongs to one session. A second bot needs its own session folder with its own config.
+One bot belongs to one session.
 
 ## Check the config
 
 ```sh
-cd <session folder> && bunx omosense@0.1.0 listen --dry-run
+cd <session folder> && bunx omosense@latest listen --dry-run
 ```
 
 It exits 0 and prints one `PLAN` line, for example `PLAN {"dir":"<session folder>/.omosense","discord":[],"lock":"listen","state":"<session folder>/.omosense/state","telegram":["<bot-name>"]}`. Check that each platform lists the bot you expect; a platform without a bot shows `[]`. The dry run creates no state.
@@ -60,7 +62,7 @@ A config in an older shape, or with a value of the wrong type, exits 1 with a me
 Arm exactly one persistent monitor per session. It runs the host, and the host runs every enabled source:
 
 ```
-command: cd <session folder> && exec bunx omosense@0.1.0
+command: cd <session folder> && exec bunx omosense@latest
 filter:  ^(EVENT|CAL|SOON|MAIL|REMIND|HERDR|RPC|TIDY) 
 persistent: true
 ```
@@ -87,7 +89,7 @@ An `EVENT` line carries `platform`, `bot`, `kind`, `chat_id` and `chat_type` (Te
 
 A `TIDY {"changed":[{repo,from,to}]}` line goes to the memory-tidy skill, run in a background write-capable worker. Spawn the worker with `load_skills: ["memory-tidy"]` (this session has the skill from `--skill`). If the task tool reports it missing, the worker reads `<session folder>/omo-mate/skills/memory-tidy/SKILL.md`.
 
-After arming, read the monitor's own output. The host's first line is `LOG omosense host starting dir=<session folder>/.omosense sources=...`, and the list must name the sources you expect. An armed host isn't proof the platform is connected; watch for connection errors in its `LOG` lines. Messages that arrive while the host is off aren't received. There's no queue.
+After arming, read the monitor's own output. Look for the `LOG omosense host starting dir=<session folder>/.omosense sources=...` line (bunx may print its own resolve lines first), and the list must name the sources you expect. An armed host isn't proof the platform is connected; watch for connection errors in its `LOG` lines. Even a start line doesn't prove the platform delivers messages: to prove it, send the bot a message and watch the host output for its `EVENT` line. Messages that arrive while the host is off aren't received. There's no queue.
 
 ## Health and recovery
 
@@ -103,7 +105,7 @@ To recover:
 
 1. Kill the old monitor handle if there is one.
 2. Arm exactly one host monitor, as in [Subscriptions](#subscriptions). Never a second: a second host logs `ALREADY_RUNNING` and retries every 30 seconds.
-3. Read its first line and check that `sources=` names the sources you expect.
+3. Find its `LOG omosense host starting` line (bunx may print its own resolve lines first) and check that `sources=` names the sources you expect.
 4. Run `rpc pending`, then `rpc subscribe <session-id>` (see [Work-session completions](#work-session-completions)).
 
 A long-lived session should prefer the global install (see [Install](#install)). Clearing the bunx cache deletes the binary a bunx host runs from.
@@ -113,15 +115,15 @@ A long-lived session should prefer the global install (see [Install](#install)).
 With `rpc.enabled`, work sessions that turn `blocked`, `opened` or `closed` come out as `RPC` lines. A finished session (`done`) doesn't. Completions are kept in the state folder and sent as one batched message to the subscribed session once 5 minutes pass with no new completion. Nothing is re-sent until it's acked.
 
 ```sh
-cd <session folder> && bunx omosense@0.1.0 rpc subscribe <session-id>   # send done batches here
-cd <session folder> && bunx omosense@0.1.0 rpc subscription             # show the subscriber
-cd <session folder> && bunx omosense@0.1.0 rpc pending                  # list un-acked completions
-cd <session folder> && bunx omosense@0.1.0 rpc ack <id> [<seq>]         # clear one
+cd <session folder> && bunx omosense@latest rpc subscribe <session-id>   # send done batches here
+cd <session folder> && bunx omosense@latest rpc subscription             # show the subscriber
+cd <session folder> && bunx omosense@latest rpc pending                  # list un-acked completions
+cd <session folder> && bunx omosense@latest rpc ack <id> [<seq>]         # clear one
 ```
 
-`<session-id>` is this messenger session's own id, the `thread_id` or `sessionId` that `omo thread list` shows for it. Each entry in a batch carries its own ack command; run it as written.
+`<session-id>` is this messenger session's own `durableSessionId` (the same value as its `thread_id`). To find it, run `omo thread list --all-scope --json`. It prints an array of objects with, among others, the fields `sessionId`, `durableSessionId`, `status`, `cwd` and `name`; pick this session's entry by `cwd` and `name`. `sessionId` is the routing handle, not the subscribe id. After `rpc subscribe`, run `rpc subscription` and confirm it shows the same id. Each entry in a batch carries its own ack command; run it as written.
 
-`subscribe` doesn't check the id. Liveness is checked only when a batch is due. With no subscriber the batch is dropped (`LOG rpc batch dropped: no subscriber`). With a subscriber that isn't alive the batch is dropped and the subscription removed (`LOG rpc batch dropped: subscriber <id> not alive; unsubscribed`). So on every "`<NAME>` mode" re-entry, run `rpc pending` to catch up, then `rpc subscribe <session-id>` again.
+`subscribe` doesn't check the id. Liveness is checked only when a batch is due, so a wrong id is only discovered then, and that batch is dropped. With no subscriber the batch is dropped (`LOG rpc batch dropped: no subscriber`). With a subscriber that isn't alive the batch is dropped and the subscription removed (`LOG rpc batch dropped: subscriber <id> not alive; unsubscribed`). So on every "`<NAME>` mode" re-entry, run `rpc pending` to catch up, then `rpc subscribe <session-id>` again.
 
 ## Reminders
 
@@ -140,7 +142,7 @@ The host rewrites the whole file (a 2-space indented array) when it marks entrie
 ## Outbound
 
 ```sh
-cd <session folder> && bunx omosense@0.1.0 say <platform> <action> '<json>'
+cd <session folder> && bunx omosense@latest say <platform> <action> '<json>'
 ```
 
 Telegram actions: `send`, `edit`, `draft`, `typing`, `react`, `unreact`, `topic`, `topic-edit`, `photo`, `doc`. Discord actions: `send`, `edit`, `typing`, `react`, `unreact`, `thread`, `thread-edit`, `file`.

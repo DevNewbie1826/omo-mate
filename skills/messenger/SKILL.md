@@ -12,9 +12,11 @@ This skill isn't installed globally. It lives in the omo-mate clone inside the b
 
 ## 0. Identity
 
-You are a persistent messenger agent, the cat from OmO (github: code-yeongyu/oh-my-openagent). Your name is `<NAME>`. Remember this setup as "`<NAME>` mode" (write it to memory) so the user can turn it on later in one line.
+You are a persistent messenger agent: an always-on agent mate built on OmO (github: code-yeongyu/oh-my-openagent). Your name is `<NAME>`. Remember this setup as "`<NAME>` mode" (write it to memory) so the user can turn it on later in one line.
 
-When "`<NAME>` mode" is said again later, in a session opened from the bot folder (with or without the `--skill` flags), skip Setup and the Bot steps already done, re-run Runtime checks, re-arm the one host monitor ([omosense](references/omosense.md#subscriptions)); if rpc is enabled, run `rpc pending` and `rpc subscribe` again ([work-session completions](references/omosense.md#work-session-completions)), and carry on from memory. Also register this session in its `sessions.json` ([response sessions](references/sessions.md#response-sessions)) and check that the host is healthy ([health and recovery](references/omosense.md#health-and-recovery)).
+When "`<NAME>` mode" is said again later, in a session opened from the bot folder (with or without the `--skill` flags), skip Setup and the Bot steps already done, re-run Runtime checks, re-arm the one host monitor ([omosense](references/omosense.md#subscriptions)); if rpc is enabled, run `rpc pending` and `rpc subscribe` again ([work-session completions](references/omosense.md#work-session-completions)), and carry on from memory. Check that the host is healthy ([health and recovery](references/omosense.md#health-and-recovery)).
+
+The same goes for a fresh session that was never told "`<NAME>` mode": if the bot folder already has `.omosense/config.json` and the bot credentials, skip Setup and the Bot steps and go straight to the re-entry steps above. You can tell because the config names the bot and the credentials file for that bot exists under `~/.config/agent-messenger/` (never print the token).
 
 ## Setup (once, at install)
 
@@ -32,15 +34,15 @@ Wait for the answers. Record them in memory with the date.
 
 **R2.** Install agent-messenger (github: agent-messenger/agent-messenger) and read which platforms it supports. Then ask the Setup questions, presenting that supported list, and wait for the answer before doing anything else.
 
-**R3.** omosense is required; this skill does not work without it. Configure it as in [omosense](references/omosense.md#config): this session folder's `.omosense/config.json` with this agent's bot, the registered people (`roles`), memory repo, `rpc` and `tidy`. `memory` is this agent's own memory repo id: the `AGENT_ID` shown under `<memory_metadata>` in your system prompt. That repo lives at `~/.omo/memory/agents/<id>/repo`. Check it with `bunx omosense@0.1.0 listen --dry-run`. If `bunx omosense@0.1.0 --help` does not run, stop and tell the user (see [Install](references/omosense.md#install)).
+**R3.** omosense is required; this skill does not work without it. Configure it as in [omosense](references/omosense.md#config): this session folder's `.omosense/config.json` with this agent's bot, the registered people (`roles`), memory repo, `rpc` and `tidy`. `memory` is this agent's own memory repo id: the `AGENT_ID` shown under `<memory_metadata>` in your system prompt. That repo lives at `~/.omo/memory/agents/<id>/repo`. Check it with `bunx omosense@latest listen --dry-run`. If `bunx omosense@latest --help` does not run, stop and tell the user (see [Install](references/omosense.md#install)).
 
 ## Bot
 
 **B1.** Walk the user through the browser logins: say exactly which page to open and what to click, then wait for them to confirm each step.
 
-**B2.** Create the bot with agent-messenger and finish its setup, including the avatar chosen in Setup. Put the bot's name in `telegram.bot` or `discord.bot` (one bot per session; a second bot needs its own session folder) and the user's account id in that platform's `roles` as `owner`. On Telegram a `roles` key is the numeric user id (the message's `from.id`), not a @username and not a group chat_id. If you want threads in the private chat with a Telegram bot, the user turns on Threaded Mode in BotFather's Mini App; no API call switches it.
+**B2.** Create the bot with agent-messenger and finish its setup, including the avatar chosen in Setup. Put the bot's name in `telegram.bot` or `discord.bot` (one bot) and the user's account id in that platform's `roles` as `owner`. On Telegram a `roles` key is the numeric user id (the message's `from.id`), not a @username and not a group chat_id. If you want threads in the private chat with a Telegram bot, the user turns on Threaded Mode in BotFather's Mini App; no API call switches it.
 
-**B3.** Prefer agent-messenger and `bunx omosense@0.1.0 say` for everything they support. When you need an action neither covers, call the platform's bot API directly, and check that platform's current API docs at that time, not from memory. Bot tokens live in `~/.config/agent-messenger/<platform>bot-credentials.json`. Read them only to make the call, and never print, log or paste them.
+**B3.** Prefer agent-messenger and `bunx omosense@latest say` for everything they support. When you need an action neither covers, call the platform's bot API directly, and check that platform's current API docs at that time, not from memory. Bot tokens live in `~/.config/agent-messenger/<platform>bot-credentials.json`. Read them only to make the call, and never print, log or paste them.
 
 Reading history: on Discord, read past messages through the bot REST API (`GET /channels/{channel.id}/messages` with the bot token; the bot needs Read Message History). Telegram bots can't read chat history at all. There, use the `EVENT` `reply_to` and `quote` fields and your own records.
 
