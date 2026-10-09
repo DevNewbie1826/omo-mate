@@ -36,7 +36,7 @@ The config lives in `<session folder>/.omosense/config.json`. State lives next t
 | Key | Meaning |
 | --- | --- |
 | `telegram.bot`, `discord.bot` | One bot name (a string) per platform, as registered in agent-messenger. Unset means that platform's listener doesn't run. |
-| `telegram.roles`, `discord.roles` | User id to role name. For Telegram the key is the sender's numeric user id (`from.id` of the message), not an @username and not a group `chat_id`. Any role name is allowed. `owner` is the privileged one, and anyone not listed is `other` (see SKILL.md I2). |
+| `telegram.roles`, `discord.roles` | User id to role name. The key is the sender's user id, the `from_id` of their `EVENT` (on Telegram the numeric `from.id`, not an @username and not a group `chat_id`). SKILL.md B4 shows how to get it on first run. Any role name is allowed. `owner` is the privileged one, and anyone not listed is `other` (see SKILL.md I2). |
 | `rpc.enabled` | Watch the work sessions this agent started. |
 | `rpc.all` | Watch every session, not only those registered in `threads.json`. |
 | `tidy.enabled`, `tidy.learnOthers`, `tidy.exclude` | Settings for the memory-tidy companion skill. See [memory-tidy](../../memory-tidy/SKILL.md). |
@@ -148,6 +148,29 @@ cd <session folder> && bunx omosense@latest say <platform> <action> '<json>'
 ```
 
 Telegram actions: `send`, `edit`, `draft`, `typing`, `react`, `unreact`, `topic`, `topic-edit`, `photo`, `doc`. Discord actions: `send`, `edit`, `typing`, `react`, `unreact`, `thread`, `thread-edit`, `file`.
+
+Fields per action, as of omosense 0.2.0 (commit 0452b69). `say` sends only these keys; any other key is dropped without an error, so a misspelled key (for example `reply_to_message_id`) just goes missing.
+
+| Platform | Action | Fields | Optional |
+| --- | --- | --- | --- |
+| Telegram | `send` | `chat_id`, `text` | `reply_to` (the message id to reply to), `parse_mode`, `thread_id` |
+| Telegram | `edit` | `chat_id`, `message_id`, `text` | `parse_mode` |
+| Telegram | `draft` | `chat_id`, `draft_id`, `text` | `thread_id` |
+| Telegram | `typing` | `chat_id` | `thread_id` |
+| Telegram | `react` | `chat_id`, `message_id` | `emoji` (default 👀) |
+| Telegram | `unreact` | `chat_id`, `message_id` | |
+| Telegram | `topic` | `chat_id`, `name` | |
+| Telegram | `topic-edit` | `chat_id`, `thread_id`, `name` | |
+| Telegram | `photo`, `doc` | `chat_id`, `path` (a local file) | `caption`, `thread_id` |
+| Discord | `send` | `channel_id`, `text` | `reply_to` (the message id to reply to) |
+| Discord | `edit` | `channel_id`, `message_id`, `text` | |
+| Discord | `typing` | `channel_id` | |
+| Discord | `react`, `unreact` | `channel_id`, `message_id` | `emoji` (default 👀) |
+| Discord | `thread` | `channel_id`, `name` | `message_id` (start the thread from that message) |
+| Discord | `thread-edit` | `thread_id` | `name`, `archived` |
+| Discord | `file` | `channel_id`, `path` (a local file) | `text` |
+
+On Telegram, `thread_id` is the topic (the `EVENT` `thread_id`).
 
 `say` uses the platform's configured bot. Add `"bot":"<name>"` to the JSON to override it; the key is stripped before the request. With no bot configured and no override, `say` exits 2. Replies, edits and reactions use the inbound event's `bot`. Anything `say` and agent-messenger don't cover goes to the platform bot API directly, checked against its current docs (SKILL.md B3).
 
