@@ -40,13 +40,19 @@ Wait for the answers. Record them in memory with the date.
 
 **B1.** Walk the user through the browser logins: say exactly which page to open and what to click, then wait for them to confirm each step.
 
-**B2.** Create the bot with agent-messenger and finish its setup, including the avatar chosen in Setup. Put the bot's name in `telegram.bot` or `discord.bot` (one bot) and the user's account id in that platform's `roles` as `owner`. On Telegram a `roles` key is the numeric user id (the message's `from.id`), not a @username and not a group chat_id. If you want threads in the private chat with a Telegram bot, the user turns on Threaded Mode in BotFather's Mini App; no API call switches it.
+**B2.** Create the bot with agent-messenger and finish its setup, including the avatar chosen in Setup. Put the bot's name in `telegram.bot` or `discord.bot` (one bot) and the user's account id in that platform's `roles` as `owner`; if you don't have the id yet, B4 gets it. On Telegram a `roles` key is the numeric user id (the message's `from.id`), not a @username and not a group chat_id. If you want threads in the private chat with a Telegram bot, the user turns on Threaded Mode in BotFather's Mini App; no API call switches it.
 
 **B3.** Prefer agent-messenger and `bunx omosense@latest say` for everything they support. When you need an action neither covers, call the platform's bot API directly, and check that platform's current API docs at that time, not from memory. Bot tokens live in `~/.config/agent-messenger/<platform>bot-credentials.json`. Read them only to make the call, and never print, log or paste them.
 
 Reading history: on Discord, read past messages through the bot REST API (`GET /channels/{channel.id}/messages` with the bot token; the bot needs Read Message History). Telegram bots can't read chat history at all. There, use the `EVENT` `reply_to` and `quote` fields and your own records.
 
-**B4.** Once the bot is connected, before anything else, send the user exactly: "Got it - I'm `<NAME>`. Say `<NAME>` mode any time and I'll pick up right where I left off."
+**B4.** First contact, in this order. A Telegram bot can't message someone who hasn't started it (the API answers 400 `chat not found`), and the host reads `roles` only when it starts.
+
+1. Arm the host ([subscriptions](references/omosense.md#subscriptions)) and check its start line.
+2. Ask the user to message the bot: `/start` on Telegram; on Discord, any message to the bot (a DM, or a channel the bot can read).
+3. Read that message's `EVENT` line. Its `from_id` is the user's id; `role` is `other` until they're registered.
+4. Put that id in the platform's `roles` as `owner` (B2), then restart the host ([health and recovery](references/omosense.md#health-and-recovery), To recover).
+5. Then, before anything else, send the user exactly, in the chat their message came from: "Got it - I'm `<NAME>`. Say `<NAME>` mode any time and I'll pick up right where I left off."
 
 ## Inbound
 
@@ -67,6 +73,8 @@ Reading history: on Discord, read past messages through the bot REST API (`GET /
 **W1.** Before you write, picture what the reader wants, what state they are in, and what would help, then write that. Work status is plain and factual: what happened, the evidence, what they need to decide. Personal talk reads like a friend in a messenger, one thing at a time. Send like a person typing: post the first sentence, then grow the same message instead of firing many, break lines only at sentence or paragraph ends, and show the typing indicator only right before a message goes out. On Telegram, stream a growing reply with `say telegram draft` (sendMessageDraft, private chats only). A draft is an ephemeral preview, so always finish it with a normal send. For tables or headings, send with sendRichMessage through the bot API (B3).
 
 **W2.** Each piece of work gets its own thread or topic with one status message you edit in place ("⏳ `<work>` · `<time elapsed>`" while working, "✅ `<work>`" when done) and a status emoji at the start of its name: 🔄 in progress, ⏸ waiting on the user or someone else, ✅ done. While work runs, that thread gets a two-line progress reply every 15 minutes and at each milestone. When the work is done, remove your eyes reaction and close (archive) the thread; when someone writes in a closed thread, reopen it, set it back to 🔄 and carry on there. Threads the user started get the same treatment. Reply in the language used in that thread. Telegram threads in the private chat need Threaded Mode (B2). Where the platform has no threads, keep the same status message and progress rules in the chat itself.
+
+Discord thread names: Discord limits renaming a thread far more tightly than sending messages, and doesn't publish the limit. In operation, a rename (`say discord thread-edit`) has come back with `status` 429 and a `retry_after` of several hundred seconds. Follow the 429's `retry_after`, not a fixed count. So on Discord, show intermediate states in the status message you edit in place, and rename only for the transitions that need it. When a rename gets 429, schedule one retry after `retry_after` and don't rename that thread again before then. To close, set the ✅ name and `archived` in one `thread-edit` call.
 
 **W3.** Send finished files (videos, images, reports) the moment they exist, in the main channel rather than buried in a thread. For anything visual, show before and after.
 
