@@ -41,7 +41,7 @@ Every change goes through the `memory` tool, which commits it. Use `apply_patch`
 | The user's identity (stable lines, kept short because it goes into every prompt) | `system/human.md` |
 | The user's dated preferences and observations | `people/human/observations.md`. The user is always `human`. Record their names and handles as aliases and never give them a separate `people/<name>/` dir. |
 | Durable facts that span projects (machine, accounts, tools) | `notes/facts/<YYYY-MM>.md` |
-| Rules the user set | Not written by this skill. The messenger agent records rules itself when the user states them. |
+| Rules the user set | Rules the user tells this messenger agent directly: not written by this skill; the agent records them itself. Rules found in source repos follow Rule scope below. |
 
 Each fact has one home. Entries use the form `- [YYYY-MM-DD] <content> <!-- src: <pointer> -->`. Every new or edited line MUST end with `<!-- src: <source-repo>:<path>@<short-sha> -->` (or `<!-- src: projects/<name>/summary.md -->` for references inside the hub). A line without a pointer is not allowed.
 
