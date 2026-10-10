@@ -78,9 +78,9 @@ Follow [Install](#install): bot folder, clone, then open a session in a Herdr pa
 
 ### 2. First run: configure the bot
 
-Say `set up messenger mode` (in any language). The skill asks three questions (name, platform, avatar), creates the bot and writes the config.
+Say `set up messenger mode` (in any language). The skill asks five questions in one message (name, platform, avatar, whether to open work sessions through rpc, whether to turn on tidy), creates the bot and writes the config. rpc and tidy default to off; herdr is on and not asked.
 
-You can also write `.omosense/config.json` by hand. It's flat and every key is optional:
+You can also write `.omosense/config.json` by hand. It's flat and every key is optional. `rpc` and `tidy` are off when absent; the example below turns everything on:
 
 ```json
 {
@@ -95,7 +95,7 @@ You can also write `.omosense/config.json` by hand. It's flat and every key is o
 }
 ```
 
-`telegram.bot` (or `discord.bot`) is one bot name. `roles` maps user ids to roles, and `owner` is the privileged one. `memory` is the messenger agent's own `AGENT_ID`, from its memory metadata. When `herdr` is absent it counts as on. See [config](skills/messenger/references/omosense.md#config) for every key.
+`telegram.bot` (or `discord.bot`) is one bot name. `roles` maps user ids to roles, and `owner` is the privileged one. `memory` is the messenger agent's own `AGENT_ID`, from its memory metadata. When `herdr` is absent it counts as on; when `rpc` or `tidy` is absent it counts as off. To turn one on later, set its `enabled` to `true` in `config.json` and restart the omosense host; for rpc, also run `rpc subscribe` again. See [config](skills/messenger/references/omosense.md#config) for every key.
 
 ### 3. Check the config
 
