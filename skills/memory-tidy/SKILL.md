@@ -19,7 +19,7 @@ omosense reads these from the messenger session folder's `.omosense/config.json`
 | `tidy.learnOthers` | When false, no other repo is read at all. |
 | `tidy.exclude` | Repo ids that are never read (for example another person's agent). |
 | `tidy.checkMin` | How often omosense checks the source repos for changes, in minutes. Default `10`. Needs omosense 0.2.0 or newer. |
-| `tidy.quietMin` | A changed repo is reported in a `TIDY` line only after its HEAD commit has been quiet this many minutes. Default `60`. A repo that keeps getting commits isn't reported until it settles, and the same HEAD isn't reported again within 6 hours. Needs omosense 0.2.0 or newer. As of origin/main e00e8f0 that 6 hour rule also holds across restarts, and one `TIDY` line lists at most 10 repos; more come as further lines. |
+| `tidy.quietMin` | A changed repo is reported in a `TIDY` line only after its HEAD commit has been quiet this many minutes. Default `60`. A repo that keeps getting commits isn't reported until it settles, and the same HEAD isn't reported again within 6 hours. Needs omosense 0.2.0 or newer. As of omosense 0.3.0 that 6 hour rule also holds across restarts, and one `TIDY` line lists at most 10 repos; more come as further lines. |
 
 **Hard rule:** the target repo (`memory`) is never a source, whatever the settings say. Exclusions apply before `learnOthers`. omosense applies all of these when it builds the changed set. If a listed repo breaks a rule anyway, skip it and report it.
 

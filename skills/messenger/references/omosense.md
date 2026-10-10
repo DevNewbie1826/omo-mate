@@ -25,9 +25,9 @@ The config lives in `<session folder>/.omosense/config.json`. State lives next t
 {
   "telegram": { "bot": "<bot-name>", "roles": { "<user-id>": "owner" } },
   "discord":  { "roles": {} },
-  "rpc":      { "enabled": true, "all": false },
+  "rpc":      { "enabled": true, "all": false, "blockedCooldownSec": 0 },
   "tidy":     { "enabled": true, "learnOthers": true, "exclude": [], "checkMin": 10, "quietMin": 60 },
-  "herdr":    { "enabled": true, "blockedAll": false },
+  "herdr":    { "enabled": true, "blockedAll": false, "blockedCooldownSec": 0 },
   "memory":   "<this agent's memory repo id>",
   "mail": false
 }
@@ -39,11 +39,13 @@ The config lives in `<session folder>/.omosense/config.json`. State lives next t
 | `telegram.roles`, `discord.roles` | User id to role name. The key is the sender's user id, the `from_id` of their `EVENT` (on Telegram the numeric `from.id`, not an @username and not a group `chat_id`). SKILL.md B4 shows how to get it on first run. Any role name is allowed. `owner` is the privileged one, and anyone not listed is `other` (see SKILL.md I2). |
 | `rpc.enabled` | Watch the work sessions this agent started. |
 | `rpc.all` | Watch every session, not only those registered in `threads.json`. |
+| `rpc.blockedCooldownSec` | Same rule as `herdr.blockedCooldownSec`, keyed by the session id. Needs omosense 0.3.0 or newer. |
 | `tidy.enabled`, `tidy.learnOthers`, `tidy.exclude` | Settings for the memory-tidy companion skill. See [memory-tidy](../../memory-tidy/SKILL.md). |
 | `tidy.checkMin` | How often tidy checks the memory repos, in minutes. Default `10`. Any number greater than 0, fractions included. Needs omosense 0.2.0 or newer; older versions ignore it. |
 | `tidy.quietMin` | How long a changed repo's HEAD commit must be quiet before a `TIDY` line reports it, in minutes. Default `60`. Any number greater than 0, fractions included. Needs omosense 0.2.0 or newer; older versions ignore it. |
 | `herdr.enabled` | Absent means on. Only an explicit `false` turns herdr off. |
-| `herdr.blockedAll` | Default `false`: a `blocked` line prints only for registered job panes. `true` prints it for every pane except omosense's own. |
+| `herdr.blockedAll` | Default `false`: a `blocked` line prints only for registered job panes. `true` prints it for every pane except omosense's own. Needs omosense 0.3.0 or newer. |
+| `herdr.blockedCooldownSec` | After a pane prints `blocked`, it won't print `blocked` again for this many seconds. Absent, `null` or `0` means off (the default). Any other value must be an integer from 0 through 9223372036, or config load fails. A `blocked` inside the window is dropped and doesn't restart it. The cooldown lives in memory, so a restart can print one more `blocked`. When you turn it on, a genuinely new question that comes in right after an answer can be held back for those seconds. Needs omosense 0.3.0 or newer. |
 | `memory` | This agent's own memory repo id. It's the `AGENT_ID: <id>` line under `<memory_metadata>` in this agent's system prompt, and the repo is `~/.omo/memory/agents/<id>/repo`. |
 | `calendars` | Which calendars google watches. Absent means all of them. |
 | `mail` | Whether google also watches mail. |
@@ -90,7 +92,7 @@ An `EVENT` line carries `platform`, `bot`, `kind`, `chat_id` and `chat_type` (Te
 
 `reply_to` is `null` unless the message replies to another one. Then it's `{"message_id": <id>, "text": "<replied text>"}`, plus `from` (the replied author's username) when known. On Discord `text` is present only when the replied content is available. Telegram bots can't read chat history, so `reply_to`, `quote` and your own records are the Telegram history.
 
-herdr prints `blocked` at once, but a registered job pane going from `working` to `idle` or `done` is kept in `state/herdr-pending.json`; once 5 minutes pass with no newer completion, all of them come out as one `HERDR {"event":"done-batch","entries":[...]}` line, one entry per pane. A remote herdr machine that can't be reached is asked again after 10, 20, 40, 80, 160, then 300 seconds; only its first failure is logged, and recovery logs `herdr <label> recovered`.
+herdr prints `blocked` at once, but a registered job pane going from `working` to `idle` or `done` is kept in `state/herdr-pending.json`; once 5 minutes pass with no newer completion, all of them come out as one `HERDR {"event":"done-batch","entries":[...]}` line, one entry per pane (omosense 0.3.0 or newer). A remote herdr machine that can't be reached is asked again after 10, 20, 40, 80, 160, then 300 seconds; only its first failure is logged, and recovery logs `herdr <label> recovered`.
 
 A `TIDY {"changed":[{repo,from,to}]}` line goes to the memory-tidy skill, run in a background write-capable worker. One line carries at most 10 repos; more come as further lines. The same HEAD isn't reported again within 6 hours, across restarts too (`state/tidy-announced.json`). Spawn the worker with `load_skills: ["memory-tidy"]` (this session has the skill from `--skill`). If the task tool reports it missing, the worker reads `<session folder>/omo-mate/skills/memory-tidy/SKILL.md`.
 
@@ -138,7 +140,7 @@ Add a reminder with `remind add`:
 cd <session folder> && bunx omosense@latest remind add --in 30m --platform telegram --target '{"chat_id":123456789}' --text "<text>"
 ```
 
-The full form is `remind add (--at TIME | --in DURATION) --platform telegram|discord --target JSON --text TEXT [--id ID]`. It prints `REMIND added <entry>`. A time more than 6 hours in the past is refused with exit 2, and a failed read or write exits 1. It holds `state/reminders.lock`, the same lock the remind tick takes, so an add and a tick never overwrite each other.
+The full form is `remind add (--at TIME | --in DURATION) --platform telegram|discord --target JSON --text TEXT [--id ID]`. It prints `REMIND added <entry>`. A time more than 6 hours in the past is refused with exit 2, and a failed read or write exits 1. An `--id` that already exists in the file is refused with exit 2. Needs omosense 0.3.0 or newer. It holds `state/reminders.lock`, the same lock the remind tick takes, so an add and a tick never overwrite each other. The tick takes that lock only for its read and for each result write and sends outside it, so `remind add` never waits for a send in flight. A crash or cancel mid-send leaves that reminder pending, so it is sent again on the next run (at-least-once).
 
 Reminders live in `<session folder>/.omosense/state/reminders.json`, a JSON array. An entry:
 
@@ -160,7 +162,7 @@ cd <session folder> && bunx omosense@latest say <platform> <action> '<json>'
 
 Telegram actions: `send`, `edit`, `draft`, `typing`, `react`, `unreact`, `topic`, `topic-edit`, `photo`, `doc`. Discord actions: `send`, `edit`, `typing`, `react`, `unreact`, `thread`, `thread-edit`, `file`.
 
-Fields per action, as of omosense origin/main e00e8f0. `omosense say --help` lists each action with its fields. `say` sends only these keys; any other key is dropped without an error, so a misspelled key (for example `reply_to_message_id`) just goes missing.
+Fields per action, as of omosense 0.3.0. `omosense say --help` lists each action with its fields. `say` sends only these keys; any other key is dropped without an error, so a misspelled key (for example `reply_to_message_id`) just goes missing.
 
 | Platform | Action | Fields | Optional |
 | --- | --- | --- | --- |
