@@ -27,7 +27,7 @@ The config lives in `<session folder>/.omosense/config.json`. State lives next t
   "discord":  { "roles": {} },
   "rpc":      { "enabled": true, "all": false },
   "tidy":     { "enabled": true, "learnOthers": true, "exclude": [], "checkMin": 10, "quietMin": 60 },
-  "herdr":    { "enabled": true },
+  "herdr":    { "enabled": true, "blockedAll": false },
   "memory":   "<this agent's memory repo id>",
   "mail": false
 }
@@ -43,6 +43,7 @@ The config lives in `<session folder>/.omosense/config.json`. State lives next t
 | `tidy.checkMin` | How often tidy checks the memory repos, in minutes. Default `10`. Any number greater than 0, fractions included. Needs omosense 0.2.0 or newer; older versions ignore it. |
 | `tidy.quietMin` | How long a changed repo's HEAD commit must be quiet before a `TIDY` line reports it, in minutes. Default `60`. Any number greater than 0, fractions included. Needs omosense 0.2.0 or newer; older versions ignore it. |
 | `herdr.enabled` | Absent means on. Only an explicit `false` turns herdr off. |
+| `herdr.blockedAll` | Default `false`: a `blocked` line prints only for registered job panes. `true` prints it for every pane except omosense's own. |
 | `memory` | This agent's own memory repo id. It's the `AGENT_ID: <id>` line under `<memory_metadata>` in this agent's system prompt, and the repo is `~/.omo/memory/agents/<id>/repo`. |
 | `calendars` | Which calendars google watches. Absent means all of them. |
 | `mail` | Whether google also watches mail. |
@@ -89,7 +90,9 @@ An `EVENT` line carries `platform`, `bot`, `kind`, `chat_id` and `chat_type` (Te
 
 `reply_to` is `null` unless the message replies to another one. Then it's `{"message_id": <id>, "text": "<replied text>"}`, plus `from` (the replied author's username) when known. On Discord `text` is present only when the replied content is available. Telegram bots can't read chat history, so `reply_to`, `quote` and your own records are the Telegram history.
 
-A `TIDY {"changed":[{repo,from,to}]}` line goes to the memory-tidy skill, run in a background write-capable worker. Spawn the worker with `load_skills: ["memory-tidy"]` (this session has the skill from `--skill`). If the task tool reports it missing, the worker reads `<session folder>/omo-mate/skills/memory-tidy/SKILL.md`.
+herdr prints `blocked` at once, but a registered job pane going from `working` to `idle` or `done` is kept in `state/herdr-pending.json`; once 5 minutes pass with no newer completion, all of them come out as one `HERDR {"event":"done-batch","entries":[...]}` line, one entry per pane. A remote herdr machine that can't be reached is asked again after 10, 20, 40, 80, 160, then 300 seconds; only its first failure is logged, and recovery logs `herdr <label> recovered`.
+
+A `TIDY {"changed":[{repo,from,to}]}` line goes to the memory-tidy skill, run in a background write-capable worker. One line carries at most 10 repos; more come as further lines. The same HEAD isn't reported again within 6 hours, across restarts too (`state/tidy-announced.json`). Spawn the worker with `load_skills: ["memory-tidy"]` (this session has the skill from `--skill`). If the task tool reports it missing, the worker reads `<session folder>/omo-mate/skills/memory-tidy/SKILL.md`.
 
 After arming, read the monitor's own output. Look for the `LOG omosense host starting dir=<session folder>/.omosense sources=...` line (bunx may print its own resolve lines first), and the list must name the sources you expect. An armed host isn't proof the platform is connected; watch for connection errors in its `LOG` lines. Even a start line doesn't prove the platform delivers messages: to prove it, send the bot a message and watch the host output for its `EVENT` line. Messages that arrive while the host is off aren't received. There's no queue.
 
@@ -125,11 +128,19 @@ cd <session folder> && bunx omosense@latest rpc ack <id> [<seq>]         # clear
 
 `<session-id>` is this messenger session's own `durableSessionId` (the same value as its `thread_id`). To find it, run `omo thread list --all-scope --json`. It prints an array of objects with, among others, the fields `sessionId`, `durableSessionId`, `status`, `cwd` and `name`; pick this session's entry by `cwd` and `name`. `sessionId` is the routing handle, not the subscribe id. After `rpc subscribe`, run `rpc subscription` and confirm it shows the same id. Each entry in a batch carries its own ack command; run it as written.
 
-`subscribe` doesn't check the id. Liveness is checked only when a batch is due, so a wrong id is only discovered then, and that batch is dropped. With no subscriber the batch is dropped (`LOG rpc batch dropped: no subscriber`). With a subscriber that isn't alive the batch is dropped and the subscription removed (`LOG rpc batch dropped: subscriber <id> not alive; unsubscribed`). So on every "`<NAME>` mode" re-entry, run `rpc pending` to catch up, then `rpc subscribe <session-id>` again.
+`subscribe` checks the id against `omo thread list` first. An id that isn't a live thread is refused: it exits 1 and saves nothing. If `omo` can't be queried, it warns and saves the id anyway. Liveness is checked again when a batch is due. With no subscriber the batch is dropped (`LOG rpc batch dropped: no subscriber`). With a subscriber that isn't alive the batch is dropped and the subscription removed (`LOG rpc batch dropped: subscriber <id> not alive; unsubscribed`). So on every "`<NAME>` mode" re-entry, run `rpc pending` to catch up, then `rpc subscribe <session-id>` again.
 
 ## Reminders
 
-There's no CLI to add a reminder. Reminders live in `<session folder>/.omosense/state/reminders.json`, a JSON array. An entry:
+Add a reminder with `remind add`:
+
+```sh
+cd <session folder> && bunx omosense@latest remind add --in 30m --platform telegram --target '{"chat_id":123456789}' --text "<text>"
+```
+
+The full form is `remind add (--at TIME | --in DURATION) --platform telegram|discord --target JSON --text TEXT [--id ID]`. It prints `REMIND added <entry>`. A time more than 6 hours in the past is refused with exit 2, and a failed read or write exits 1. It holds `state/reminders.lock`, the same lock the remind tick takes, so an add and a tick never overwrite each other.
+
+Reminders live in `<session folder>/.omosense/state/reminders.json`, a JSON array. An entry:
 
 ```json
 {"id":"<id>","at":"2026-10-08T09:00:00+09:00","platform":"telegram","target":{"chat_id":123456789},"text":"<text>"}
@@ -139,7 +150,7 @@ There's no CLI to add a reminder. Reminders live in `<session folder>/.omosense/
 
 The remind source always runs. It checks at start and every 20 seconds and sends a due entry with `say <platform> send`. Then it marks the entry `sent`, or `failed` plus `error` (never retried), or `skipped` when it's more than 6 hours late. `cancelled` is a marker you set; the host never cancels. Entries with any of these markers are left alone. After writing the file it prints `REMIND sent <entry json>`, `REMIND failed <entry json>` or `REMIND skipped-late <entry json>`.
 
-The host rewrites the whole file (a 2-space indented array) when it marks entries. So to add one, re-read the file and write the whole array back.
+The host rewrites the whole file (a 2-space indented array) when it marks entries. Add entries with `remind add`, not by editing the file.
 
 ## Outbound
 
@@ -149,7 +160,7 @@ cd <session folder> && bunx omosense@latest say <platform> <action> '<json>'
 
 Telegram actions: `send`, `edit`, `draft`, `typing`, `react`, `unreact`, `topic`, `topic-edit`, `photo`, `doc`. Discord actions: `send`, `edit`, `typing`, `react`, `unreact`, `thread`, `thread-edit`, `file`.
 
-Fields per action, as of omosense 0.2.0 (commit 0452b69). `say` sends only these keys; any other key is dropped without an error, so a misspelled key (for example `reply_to_message_id`) just goes missing.
+Fields per action, as of omosense origin/main e00e8f0. `omosense say --help` lists each action with its fields. `say` sends only these keys; any other key is dropped without an error, so a misspelled key (for example `reply_to_message_id`) just goes missing.
 
 | Platform | Action | Fields | Optional |
 | --- | --- | --- | --- |
@@ -169,6 +180,8 @@ Fields per action, as of omosense 0.2.0 (commit 0452b69). `say` sends only these
 | Discord | `thread` | `channel_id`, `name` | `message_id` (start the thread from that message) |
 | Discord | `thread-edit` | `thread_id` | `name`, `archived` |
 | Discord | `file` | `channel_id`, `path` (a local file) | `text` |
+
+Discord `send`, `edit` and `file` also take `content` as an alias of `text`.
 
 On Telegram, `thread_id` is the topic (the `EVENT` `thread_id`).
 
