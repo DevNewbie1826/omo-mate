@@ -19,7 +19,7 @@ omosense reads these from the messenger session folder's `.omosense/config.json`
 | `tidy.learnOthers` | When false, no other repo is read at all. |
 | `tidy.exclude` | Repo ids that are never read (for example another person's agent). |
 | `tidy.checkMin` | How often omosense checks the source repos for changes, in minutes. Default `10`. Needs omosense 0.2.0 or newer. |
-| `tidy.quietMin` | A changed repo is reported in a `TIDY` line only after its HEAD commit has been quiet this many minutes. Default `60`. A repo that keeps getting commits isn't reported until it settles, and the same HEAD isn't reported again within 6 hours. Needs omosense 0.2.0 or newer. |
+| `tidy.quietMin` | A changed repo is reported in a `TIDY` line only after its HEAD commit has been quiet this many minutes. Default `60`. A repo that keeps getting commits isn't reported until it settles, and the same HEAD isn't reported again within 6 hours. Needs omosense 0.2.0 or newer. As of origin/main e00e8f0 that 6 hour rule also holds across restarts, and one `TIDY` line lists at most 10 repos; more come as further lines. |
 
 **Hard rule:** the target repo (`memory`) is never a source, whatever the settings say. Exclusions apply before `learnOthers`. omosense applies all of these when it builds the changed set. If a listed repo breaks a rule anyway, skip it and report it.
 
@@ -63,6 +63,7 @@ Every rule, preference or decision line carries `[scope: global]` or `[scope: <p
    - Process only the listed repos: `git -C <repo> diff --stat <from> <to>`, then the file diffs. When `from` is null (a first run or a new repo), read the whole tree.
 2. **Classify each source.** A template-only repo gets one line in INDEX under Skipped. One-off or scratch sources (temporary worktrees, single reviews, anything under a tmp dir) get one line under One-off (`- name | cwd | outcome`) or are dropped, and get no project dir. A durable preference or person fact in them still goes to its people/ home. Real projects get a summary.
 3. **Distill.** Merge new information into the existing summary: update Status, add decisions and facts, and collapse per-session notes into outcomes and lessons. Drop progress logs. Keep each summary readable at a glance (about 6 KB at most). For large sources, fan out read-only helpers that write drafts to a temp dir, then integrate the drafts yourself.
+   - **Many repos at once:** parallel workers only read and draft. One writer applies every draft to the target, and no two writers touch the same file at once: concurrent writes duplicate facts.
 4. **Route people, facts and preferences** to their homes, following Rule scope. Search the target first. Merge into an existing line (newest date, combined `src:`) instead of appending a duplicate.
 5. **Fix stale or wrong records** when newer evidence contradicts them, and give the reason in the memory-tool `reason`. A contradiction about a person goes under `## Contradiction` in their observations. Leave the card alone.
 6. **Secrets.** Never copy tokens, keys, passwords or OAuth secrets. Write `[REDACTED]`.
