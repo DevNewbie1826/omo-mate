@@ -19,7 +19,7 @@ Bot credentials are kept by agent-messenger in `~/.config/agent-messenger/`. Nev
 
 ## Config
 
-The config lives in `<session folder>/.omosense/config.json`. State lives next to it in `<session folder>/.omosense/state/` (reminders, registered threads, pending work-session completions, the memory-tidy watermark, Telegram attachments, lock files). One of those files is written by the agent, not by omosense: `threads.json` holds the work sessions this agent started (see [Registry](sessions.md#registry)). The config is flat:
+The config lives in `<session folder>/.omosense/config.json`. State lives next to it in `<session folder>/.omosense/state/` (reminders, registered threads, pending work-session completions, the memory-tidy watermark, Telegram attachments, lock files). One of those files is written by the agent, not by omosense: `threads.json` holds the work sessions this agent started (see [Registry](sessions.md#registry)). The config is flat. `rpc` and `tidy` are off by default (absent key means off) and `herdr` is on by default; Setup questions 4 and 5 decide `rpc` and `tidy`, and a no leaves the key out. The example below turns everything on:
 
 ```json
 {
@@ -37,10 +37,10 @@ The config lives in `<session folder>/.omosense/config.json`. State lives next t
 | --- | --- |
 | `telegram.bot`, `discord.bot` | One bot name (a string) per platform, as registered in agent-messenger. Unset means that platform's listener doesn't run. |
 | `telegram.roles`, `discord.roles` | User id to role name. The key is the sender's user id, the `from_id` of their `EVENT` (on Telegram the numeric `from.id`, not an @username and not a group `chat_id`). SKILL.md B4 shows how to get it on first run. Any role name is allowed. `owner` is the privileged one, and anyone not listed is `other` (see SKILL.md I2). |
-| `rpc.enabled` | Watch the work sessions this agent started. |
+| `rpc.enabled` | Watch the work sessions this agent started. Default off: absent means off. |
 | `rpc.all` | Watch every session, not only those registered in `threads.json`. |
 | `rpc.blockedCooldownSec` | Same rule as `herdr.blockedCooldownSec`, keyed by the session id. Needs omosense 0.3.0 or newer. |
-| `tidy.enabled`, `tidy.learnOthers`, `tidy.exclude` | Settings for the memory-tidy companion skill. See [memory-tidy](../../memory-tidy/SKILL.md). |
+| `tidy.enabled`, `tidy.learnOthers`, `tidy.exclude` | Settings for the memory-tidy companion skill. `tidy.enabled` defaults to off: absent means off. See [memory-tidy](../../memory-tidy/SKILL.md). |
 | `tidy.checkMin` | How often tidy checks the memory repos, in minutes. Default `10`. Any number greater than 0, fractions included. Needs omosense 0.2.0 or newer; older versions ignore it. |
 | `tidy.quietMin` | How long a changed repo's HEAD commit must be quiet before a `TIDY` line reports it, in minutes. Default `60`. Any number greater than 0, fractions included. Needs omosense 0.2.0 or newer; older versions ignore it. |
 | `herdr.enabled` | Absent means on. Only an explicit `false` turns herdr off. |
@@ -113,7 +113,7 @@ To recover:
 1. Kill the old monitor handle if there is one.
 2. Arm exactly one host monitor, as in [Subscriptions](#subscriptions). Never a second: a second host logs `ALREADY_RUNNING` and retries every 30 seconds.
 3. Find its `LOG omosense host starting` line (bunx may print its own resolve lines first) and check that `sources=` names the sources you expect.
-4. Run `rpc pending`, then `rpc subscribe <session-id>` (see [Work-session completions](#work-session-completions)).
+4. If `rpc.enabled` is `true`, run `rpc pending`, then `rpc subscribe <session-id>` (see [Work-session completions](#work-session-completions)).
 
 A long-lived session should prefer the global install (see [Install](#install)). Clearing the bunx cache deletes the binary a bunx host runs from.
 

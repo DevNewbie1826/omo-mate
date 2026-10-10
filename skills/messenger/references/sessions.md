@@ -4,7 +4,7 @@ This page holds the concrete procedures behind SKILL.md's Sessions rules. In it 
 
 ## Opening a work session
 
-The standard is a webchat session tracked by rpc. omosense's rpc source sees its completions, so the done claim below runs on its own trigger.
+The standard is a webchat session tracked by rpc. omosense's rpc source sees its completions, so the done claim below runs on its own trigger. That needs `rpc.enabled`, which is off by default; when rpc is off, a herdr session (the Herdr fallback below) is the standard path, and the messenger session checks completion itself.
 
 1. Connect to the multi-session host socket. Its path is `$OMOSENSE_RPC_SOCK`, else `$OMO_CODING_AGENT_DIR/rpc/rpc.sock`, else `~/.omo/agent/rpc/rpc.sock`. Framing is one LF-terminated JSON object per request, and each answer is one response carrying the request's `id`. senpi's `docs/rpc.md` is the reference for the socket.
 2. Send `open_session` with the project folder and `retain_on_disconnect: true`, so the session outlives the connection that opened it:
