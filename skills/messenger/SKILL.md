@@ -24,7 +24,7 @@ Ask these three in one message, as soon as R2 has read agent-messenger's platfor
 
 1. "What should I call myself?" becomes `<NAME>` and "`<NAME>` mode".
 2. "Which platform?" Offer the platforms agent-messenger supports.
-3. "Which avatar?" The default OmO icon (`.github/assets/omo-icon-light.svg` in the OmO repo, `dev` branch) or an image the user gives you.
+3. "Which avatar?" The default OmO icon (`.github/assets/omo-icon-light.svg` in the OmO repo `code-yeongyu/oh-my-openagent`, `dev` branch) or an image the user gives you.
 
 Wait for the answers. Record them in memory with the date.
 
@@ -41,6 +41,8 @@ Wait for the answers. Record them in memory with the date.
 **B1.** Walk the user through the browser logins: say exactly which page to open and what to click, then wait for them to confirm each step.
 
 **B2.** Create the bot with agent-messenger and finish its setup, including the avatar chosen in Setup. Put the bot's name in `telegram.bot` or `discord.bot` (one bot) and the user's account id in that platform's `roles` as `owner`; if you don't have the id yet, B4 gets it. On Telegram a `roles` key is the numeric user id (the message's `from.id`), not a @username and not a group chat_id. If you want threads in the private chat with a Telegram bot, the user turns on Threaded Mode in BotFather's Mini App; no API call switches it.
+
+On Discord, the bot comes from the Developer Portal (discord.com/developers/applications): **New Application**, then **Bot**, where the token is shown. Under **Privileged Gateway Intents** turn on **Message Content Intent**: omosense's listener asks for it, and Discord closes a connection that asks for a privileged intent the app doesn't have (close code 4014). To invite the bot, open **OAuth2** > **URL Generator**, pick the `bot` scope and the permissions View Channels, Send Messages, Send Messages in Threads, Read Message History, Add Reactions, Attach Files and Manage Threads, then open the generated URL, pick the server and click **Authorize**. Give the token to `agent-discordbot auth set <token>`; never paste it into the chat.
 
 **B3.** Prefer agent-messenger and `bunx omosense@latest say` for everything they support. When you need an action neither covers, call the platform's bot API directly, and check that platform's current API docs at that time, not from memory. Bot tokens live in `~/.config/agent-messenger/<platform>bot-credentials.json`. Read them only to make the call, and never print, log or paste them.
 

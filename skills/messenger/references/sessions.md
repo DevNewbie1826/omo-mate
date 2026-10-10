@@ -45,6 +45,8 @@ herdr pane:
 3. `herdr pane send-text <id> "<text>"`, then `herdr pane send-keys <id> enter` once. If, after reading the pane, the sent text is still sitting in the input line and the agent is idle, press Enter once more. Never send the text twice.
 4. `herdr pane wait-output <id> --match "ACK <msg-id>" --timeout <ms>`. On a timeout, read the pane again before deciding anything.
 
+When sibling agents run in panes of the same folder, cwd doesn't tell them apart. herdr puts each pane's id in `HERDR_PANE_ID`, so `echo $HERDR_PANE_ID` (or `herdr pane current`) gives your own pane; omosense reads the same variable to leave its own pane out of `HERDR` lines. Name panes with `herdr pane rename <id> <label>` (it shows up as `label` in `herdr pane list`), and never send to your own pane id.
+
 ## Registry
 
 The registry is `<session folder>/.omosense/state/threads.json`: an object keyed by thread key (an array is also accepted, the index being the key). omosense reads a few fields. Everything else belongs to the agent, and omosense ignores fields it doesn't read, so the additions below are safe.
@@ -142,6 +144,7 @@ No script automates this. It works only if each brief asks the work session to e
 | `herdr pane list` | All panes. |
 | `herdr pane process-info --pane <id>` | Foreground process of a pane. |
 | `herdr pane read <id> --source recent-unwrapped --lines <N>` | Recent pane text. |
+| `herdr pane rename <id> <label>` | Name a pane. |
 | `herdr pane send-text <id> "<text>"` | Type text into a pane. |
 | `herdr pane send-keys <id> enter` | Press keys in a pane. |
 | `herdr pane wait-output <id> --match "<text>" --timeout <ms>` | Wait for text to appear. |
