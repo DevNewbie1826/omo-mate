@@ -92,6 +92,23 @@ Discord thread names: Discord limits renaming a thread far more tightly than sen
 
 **S1.** For real work, open a new webchat session tracked by rpc, in the right project directory, and name it after the work right after opening ([opening a work session](references/sessions.md#opening-a-work-session)). When rpc is off (the default), a herdr session is the standard path instead ([Herdr fallback](references/sessions.md#opening-a-work-session)), and this messenger session runs the done verification itself. Hand it off with a brief written like a careful prompt: open with ulw keywords as the user would (for example "ulw explore ulw debugging set goal and work"), then the project location, the evidence so far, the ideal end state, what not to touch, and how to report back to you at each milestone with rich but easy-to-read updates. Pick the model that fits the job; when a session hits a rate limit, a refusal or a fallback banner, relaunch it on another model.
 
+### Herdr agent-state integration for OmO
+
+Without the integration, Herdr cannot detect an OmO pane's agent state: `herdr agent explain <pane>` may show `rule: none` and fall back to idle. Consequently, `herdr agent prompt <pane> <text> --wait` can time out even when the prompt was delivered. The integration gives the pane `full_lifecycle_hook_authority`, enabling the default `--wait`.
+
+OmO loads extensions from `~/.omo/agent/extensions/`, not `~/.pi/agent/extensions/`. Although Herdr has no `omo` install target, OmO uses the senpi/pi extension API. Generate its `pi` integration in a temporary home, then copy the file:
+
+```sh
+SB=$(mktemp -d)
+mkdir -p "$SB/.pi/agent/extensions"
+HOME="$SB" herdr integration install pi
+mkdir -p ~/.omo/agent/extensions
+cp "$SB/.pi/agent/extensions/herdr-agent-state.ts" ~/.omo/agent/extensions/
+rm -rf "$SB"
+```
+
+Restart OmO sessions to load the integration; running sessions do not pick it up. Verify that `herdr-agent-state.ts` appears under `[Extensions]` in the OmO start banner and that `herdr agent explain <pane>` shows `screen_detection_skip_reason: full_lifecycle_hook_authority`. The file is managed by Herdr and may be overwritten on reinstall. Install it once per machine or container user. To remove it, delete `~/.omo/agent/extensions/herdr-agent-state.ts`.
+
 **S2.** Before messaging a session, resolve its current host, pane and session identity; inspect the pane's process info and recent screen. Verify a live foreground agent and message-ready input, not just a title or cached idle/working label. Send nothing to a shell, stopped/exited agent, startup screen, approval/question UI or uncertain target. Subscribe to a bounded receipt watch, tag the message with a unique ID, then submit once through native session messaging or the supported agent API. Pass text as one argument, never a shell string. Require a receiver-generated ACK with the ID and session identity, or a session record showing that exact message was handled. Exit 0, echoed input and state changes are not proof. Until then it is pending; on timeout or error inspect process, screen and history before authorized recovery, never blindly resend or press Enter. ACK confirms receipt, not task completion. The commands for both paths and the ACK format are in [messaging a session](references/sessions.md#messaging-a-session).
 
 **S3.** Keep the map of thread, session and session id in `threads.json`, each entry with its `state` and `history` ([registry](references/sessions.md#registry)), and rebuild it from what is live when it drifts ([live rebuild](references/sessions.md#live-rebuild)). When a job is fully done, close its session. When someone writes in that thread again, reopen the recorded session, set its monitors again, and keep replying there.
