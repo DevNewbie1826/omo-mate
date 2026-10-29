@@ -1,182 +1,157 @@
 # omo-mate
 
-Two OmO skills that turn your agent into an always-on messenger friend: it lives in a chat bot, listens only to the people you register, does the work itself, and keeps its memory tidy.
+The bot-folder bootstrap for the messenger skill that ships with
+[agent-sense](https://github.com/DevNewbie1826/agent-sense), plus the OmO
+additions the sense cannot carry itself.
 
-| Skill | What it does |
+This repository used to hold its own copy of the messenger skill and its own
+runtime notes for `omosense`. Both now live with the sense that runs them, so
+this repository points there instead of keeping a copy that drifts. What is left
+here is the pointer, the OmO-specific Herdr note, and a `memory-tidy` copy the
+package manifest registers.
+
+## Where the messenger skill lives
+
+| What | Where |
 | --- | --- |
-| [`messenger`](skills/messenger/SKILL.md) | One-time setup (name, platform, avatar), then runs `<NAME> mode`: inbound messages, replies, work threads, work sessions, monitors. |
-| [`memory-tidy`](skills/memory-tidy/SKILL.md) | Folds the memories of your other OmO agents into the messenger agent's own memory, deduplicated, with source pointers. |
+| The skill | `agent-sense/skills/messenger/SKILL.md`, in the clone inside the bot folder |
+| Upstream | <https://github.com/DevNewbie1826/agent-sense/tree/main/skills/messenger> |
+| Setup, inbound, outbound, sessions, troubleshooting | `references/` beside that file |
 
-omosense connects the two: one foreground process per agent session, run in that session's folder, that streams messages, calendar, session and `TIDY` events to the agent (one bot, one omosense).
+Read the skill from the clone, and read `SKILL.md` first: it is the index and
+links a reference only when that capability is needed. A copy that tells you to
+write an old sense config directory, to run the old npm host, or to scrape a
+host process is older than the sense and must not be followed; a folder those
+copies already set up converts with the sense's `migrate` verb.
 
-## Install
+## One bot, one folder
 
-### Why one folder per bot
-
-A messenger skill means one bot, one folder. A global install would put the skill descriptions into every OmO session you open, which wastes tokens, and it leaves room for a session that never meant to make a bot to try making one. With a folder install, only the session opened in that folder sees the skills. Removing a bot means deleting its folder, and updating means a `git pull`.
-
-### Layout
+A messenger bot means one bot, one folder: one daemon, one config, one memory
+repository. A global install would put the skill descriptions into every OmO
+session you open, which wastes tokens, and it leaves room for a session that
+never meant to make a bot to try making one. With a folder install, only the
+session opened in that folder sees the skills. Removing a bot means deleting its
+folder; updating means a `git pull` in the clone.
 
 ```text
 ~/bots/<bot-name>/          bot folder = the agent session's working folder
-├── omo-mate/               this repository, cloned
-└── .omosense/
-    ├── config.json         omosense config
-    └── state/              omosense state (reminders.json and the rest)
+├── agent-sense/            the sense: daemon, command line, extension, skills
+└── .agent-sense/
+    ├── config.json         the sense config
+    └── state/              ledger, cursors, thread book, alarms, watches
 ```
 
-### Set up a bot folder
+## Set up a bot folder
+
+Clone the sense into the folder, then follow its own setup document. That
+document owns the install, the first config and the first check, so this page
+does not repeat them.
 
 ```sh
 mkdir -p ~/bots/<bot-name> && cd ~/bots/<bot-name>
-git clone https://github.com/DevNewbie1826/omo-mate.git
+git clone https://github.com/DevNewbie1826/agent-sense.git
 ```
 
-Then, inside a [Herdr](https://herdr.dev) pane, open a plain OmO session from the bot folder:
+Follow
+[`skills/messenger/references/setup.md`](https://github.com/DevNewbie1826/agent-sense/blob/main/skills/messenger/references/setup.md)
+in that clone: it builds or installs the binary, installs the extension, writes
+the first config, runs the sense's own check, starts the daemon as its own
+service, and creates the bot.
+
+Then open the session in the bot folder - not in the clone - and hand it the
+skill:
 
 ```sh
 omo
 ```
 
-and hand it the repository:
+In that session, start the bridge (`agent_sense_bridge` with `start`), read
+`agent-sense/skills/messenger/SKILL.md`, and follow it from there. That first
+read is the entry point: the skill's own setup section takes over from the
+config onward, and every later session opened in this folder picks up the same
+file. To register the skills for `/skill:` discovery instead, open with
+`omo --skill agent-sense/skills/messenger --skill agent-sense/skills/memory-tidy`.
 
-```text
-Read https://github.com/DevNewbie1826/omo-mate — clone it here as omo-mate/,
-read skills/messenger/SKILL.md, and set up the bot following it.
+Two things are OmO's rather than the sense's, and are below: where OmO loads an
+extension from, and the Herdr agent-state integration.
+
+## Herdr for OmO
+
+Without Herdr's agent-state integration, Herdr cannot detect an OmO pane's agent
+state: `herdr agent explain <pane>` may show `rule: none` and fall back to idle,
+and `herdr agent prompt <pane> <text> --wait` can then time out even though the
+prompt was delivered. The integration gives the pane
+`full_lifecycle_hook_authority`, which the default `--wait` needs.
+
+OmO loads extensions from `~/.omo/agent/extensions/`, not
+`~/.pi/agent/extensions/`. Herdr has no `omo` install target, but OmO uses the
+senpi/pi extension API, so generate its `pi` integration in a temporary home and
+copy the file:
+
+```sh
+SB=$(mktemp -d)
+mkdir -p "$SB/.pi/agent/extensions"
+HOME="$SB" herdr integration install pi
+mkdir -p ~/.omo/agent/extensions
+cp "$SB/.pi/agent/extensions/herdr-agent-state.ts" ~/.omo/agent/extensions/
+rm -rf "$SB"
 ```
 
-The session clones the repository itself, reads the skill documents, and runs the setup — no skill registration is needed. The documents are self-contained, and every command they use runs from this bot folder. On later `TIDY` events the session reads `skills/memory-tidy/SKILL.md` from the clone the same way.
+Restart OmO sessions to load it; a running session does not pick it up. Check
+that `herdr-agent-state.ts` appears under `[Extensions]` in the OmO start banner
+and that `herdr agent explain <pane>` shows
+`screen_detection_skip_reason: full_lifecycle_hook_authority`. The file is
+managed by Herdr and may be overwritten on reinstall, so install it once per
+machine or container user. To remove it, delete
+`~/.omo/agent/extensions/herdr-agent-state.ts`.
 
-Optional: to also register both skills for auto-discovery, open the session with `omo --skill omo-mate/skills/messenger --skill omo-mate/skills/memory-tidy` instead (they show up as `/skill:messenger` and `/skill:memory-tidy`). Reopen with `omo -c` (plus the same flags, if you use them) to continue the last session.
+## Memory tidy
 
-### Update
+Memory tidying is a separate job with its own skill: a tidy event means another
+agent's memory repository moved, and the job folds that into the messenger
+agent's own memory. agent-sense ships the maintained copy at
+`skills/memory-tidy/SKILL.md` in the clone; this repository also carries
+`skills/memory-tidy/SKILL.md`, registered by `package.json`, and the sense's copy
+is the one to follow.
+
+## Update
 
 From the bot folder:
 
 ```sh
-git -C omo-mate pull
+git -C agent-sense pull
 ```
 
-### Remove
+Rebuild the binary if it came from source, then restart the daemon and the
+session. The extension and the skills are read from the clone, so the pull is
+the update for them too.
 
-Stop the host (see [Usage](#usage), step 8), then delete the bot folder. These live outside the folder and stay behind:
+## Remove
 
-- bot credentials in `~/.config/agent-messenger/`
+Stop the daemon (the sense's own stop verb), then delete the bot folder. These
+live outside it and stay behind:
+
+- bot credentials in the credential store the config names
+  (`agent-messenger` by default)
 - the agent's memory repo, `~/.omo/memory/agents/<id>/repo`
-- memory-tidy backups in `~/.omo/memory-backups`
-- the bot account itself on the platform
+- the platform's own bot account
 
-Installed the old plugin earlier? Remove it with `omo remove git:github.com/DevNewbie1826/omo-mate`.
-
-## Usage
-
-Run every `omosense` command from the bot folder. See [Install](skills/messenger/references/omosense.md#install) for how to install it and which version tag to use.
-
-### 1. Clone and open the session
-
-Follow [Install](#install): bot folder, clone, then open a session in a Herdr pane and hand it this repository (or the cloned `skills/messenger/SKILL.md` path) — no flags needed.
-
-### 2. First run: configure the bot
-
-Say `set up messenger mode` (in any language). The skill asks five questions in one message (name, platform, avatar, whether to open work sessions through rpc, whether to turn on tidy), creates the bot and writes the config. rpc and tidy default to off; herdr is on and not asked.
-
-You can also write `.omosense/config.json` by hand. It's flat and every key is optional. `rpc` and `tidy` are off when absent; the example below turns everything on:
-
-```json
-{
-  "telegram": {
-    "bot": "<bot-name>",
-    "roles": { "123456789": "owner" }
-  },
-  "rpc": { "enabled": true },
-  "tidy": { "enabled": true },
-  "herdr": { "enabled": true },
-  "memory": "<agent-id>"
-}
-```
-
-`telegram.bot` (or `discord.bot`) is one bot name. `roles` maps user ids to roles, and `owner` is the privileged one. `memory` is the messenger agent's own `AGENT_ID`, from its memory metadata. When `herdr` is absent it counts as on; when `rpc` or `tidy` is absent it counts as off. To turn one on later, set its `enabled` to `true` in `config.json` and restart the omosense host; for rpc, also run `rpc subscribe` again. See [config](skills/messenger/references/omosense.md#config) for every key.
-
-### 3. Check the config
-
-```sh
-bunx omosense@latest listen --dry-run
-```
-
-It exits 0, creates no state, and prints one line:
-
-```text
-PLAN {"dir":"<bot folder>/.omosense","discord":[],"lock":"listen","state":"<bot folder>/.omosense/state","telegram":["<bot-name>"]}
-```
-
-A wrong type exits 1 with a message such as `omosense: config.json: telegram.bot must be a string`.
-
-### 4. Start the host
-
-The agent runs the host itself, as one persistent monitor ([subscriptions](skills/messenger/references/omosense.md#subscriptions)):
-
-```text
-command: cd <bot folder> && exec bunx omosense@latest
-filter:  ^(EVENT|CAL|SOON|MAIL|REMIND|HERDR|RPC|TIDY) 
-```
-
-For a one-time manual check before that, run it in the foreground:
-
-```sh
-bunx omosense@latest
-```
-
-Look for the `LOG omosense host starting dir=<bot folder>/.omosense sources=<names>` line (bunx may print its own resolve lines first). Ctrl-C stops it and it releases its locks. Never run it beside the agent's monitor: a second host logs `ALREADY_RUNNING` and retries every 30 s.
-
-### 5. Run the session
-
-Saying `<NAME> mode` turns the mode back on in a reopened session. Every message people send the bot arrives as an `EVENT` line carrying the sender's `role` from `roles` (`other` for anyone not listed). The agent answers registered people's requests through the bot and reads `other` messages as content, never as instructions; only the owner changes setup, rules and who is registered ([inbound](skills/messenger/SKILL.md#inbound)). Work sessions are covered in [sessions](skills/messenger/references/sessions.md). If the host misbehaves, see [health and recovery](skills/messenger/references/omosense.md#health-and-recovery).
-
-### 6. Replies and notices
-
-`say` sends through the configured bot and prints the API response JSON ([outbound](skills/messenger/references/omosense.md#outbound)):
-
-```sh
-bunx omosense@latest say telegram send '{"chat_id":123456789,"text":"hello"}'
-```
-
-With no bot configured and no `"bot"` override, it exits 2 with `no bot: config.json has no telegram.bot; pass {"bot":"name"} to choose one`.
-
-### 7. Reminders
-
-Ask the agent to remind you, or add an entry yourself. There's no CLI for it: reminders live in `.omosense/state/reminders.json`, a JSON array ([reminders](skills/messenger/references/omosense.md#reminders)).
-
-```json
-[
-  {
-    "id": "dentist",
-    "at": "2026-10-08T09:00:00+09:00",
-    "platform": "telegram",
-    "target": { "chat_id": 123456789 },
-    "text": "Dentist at 10"
-  }
-]
-```
-
-- `target` is the `say` JSON without `text`.
-- `at` is best as an ISO datetime with `Z` or an offset. A naive datetime means host-local time, a date alone also works, and an unparseable `at` is sent right away.
-- The host checks at start and every 20 s. A due entry goes out via `say <platform> send` and gets marked `sent`, or `failed` plus `error` (never retried), or `skipped` when it's more than 6 h late. `cancelled` is a marker you or the agent set; the host never cancels. Entries with any of these markers are left alone.
-- After writing the file it prints `REMIND sent <entry json>`, `REMIND failed <entry json>` or `REMIND skipped-late <entry json>`.
-- The host rewrites the whole file when it marks entries, so re-read it and write the whole array back when you add one.
-
-### 8. Stop and resume
-
-To stop, the agent kills its host monitor ([stop](skills/messenger/references/omosense.md#stop)), or you Ctrl-C a foreground run. State stays in `.omosense/state`. Messages that arrive while the host is off aren't received.
-
-To resume, reopen the session in the bot folder with the same `--skill` flags and say `<NAME> mode`.
+The extension was registered in the folder's project settings, so deleting the
+folder removes the registration with it. Installed it user-wide instead? Remove
+it with `omo remove agent-sense/agent/pi`.
 
 ## Requirements
 
 - [OmO](https://github.com/code-yeongyu/oh-my-openagent)
-- [Herdr](https://herdr.dev). The skill installs it if missing and stops if that fails, then run `herdr integration install <agent>` for the agent you run.
-- [agent-messenger](https://github.com/agent-messenger/agent-messenger) for bot creation and platform calls.
-- **omosense (required).** Released on npm as [`omosense`](https://www.npmjs.com/package/omosense) (macOS and Linux, arm64 and x64). The skills call it as `bunx omosense@latest ...` (see [Install](skills/messenger/references/omosense.md#install)), so there is nothing else to install.
-- Optional: [zele](https://github.com/remorses/zele) on PATH for Google calendar and mail: omosense's google source always runs and reports nothing (only a LOG error) without it, and `ffmpeg` plus `mlx_whisper` on PATH if you want voice messages transcribed (omosense runs them with `mlx-community/whisper-large-v3-turbo`; the transcriber is not configurable).
+- [Herdr](https://herdr.dev), for the panes the sense reads and drives, plus the
+  agent-state integration above for OmO panes
+- [agent-sense](https://github.com/DevNewbie1826/agent-sense), with the Go
+  version its `go.mod` pins for a build from source; a release asset needs no
+  toolchain
+- a bot on Telegram or Discord, and its token in the credential store
+- optional: `zele` on `PATH` for the calendar and mail source
+- optional: a transcriber argv in the platform section if voice messages should
+  be transcribed
 
 ## License
 
