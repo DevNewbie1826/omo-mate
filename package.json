@@ -1,7 +1,7 @@
 {
   "name": "omo-mate",
-  "version": "0.2.0",
-  "description": "Turn an OmO agent into an always-on messenger friend (any name, any supported platform), plus a memory-tidy companion skill.",
+  "version": "0.3.0",
+  "description": "Bot-folder bootstrap that points at the messenger skill shipped with agent-sense, plus the OmO Herdr agent-state note and a memory-tidy copy.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/DevNewbie1826/omo-mate.git"
@@ -12,7 +12,8 @@
     "omo-plugin",
     "skill",
     "messenger",
-    "omosense"
+    "agent-sense",
+    "herdr"
   ],
   "pi": {
     "skills": [

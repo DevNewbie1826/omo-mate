@@ -6,11 +6,11 @@ description: >-
 
 # Memory tidy
 
-This skill gathers people, decisions and facts from the user's other agents into summaries in the messenger agent's own memory, and cleans out stale or wrong records. Source memories are read-only. Only the agent's own memory is written. It is the companion of the `messenger` skill, and omosense connects the two (see [omosense](../messenger/references/omosense.md)).
+This skill gathers people, decisions and facts from the user's other agents into summaries in the messenger agent's own memory, and cleans out stale or wrong records. Source memories are read-only. Only the agent's own memory is written. It is the companion of the `messenger` skill, and the sense connects the two (see [setup](https://github.com/DevNewbie1826/agent-sense/blob/main/skills/messenger/references/setup.md)).
 
 ## Settings (from the session folder's omosense config)
 
-omosense reads these from the messenger session folder's `.omosense/config.json` (see [config](../messenger/references/omosense.md#config)).
+omosense reads these from the messenger session folder's `.omosense/config.json` (see [config](https://github.com/DevNewbie1826/agent-sense/blob/main/docs/config.md)).
 
 | Key | Effect |
 | --- | --- |
