@@ -58,6 +58,20 @@ in that clone: it builds or installs the binary, installs the extension, writes
 the first config, runs the sense's own check, starts the daemon as its own
 service, and creates the bot.
 
+Then open the session in the bot folder - not in the clone - and hand it the
+skill:
+
+```sh
+omo
+```
+
+In that session, start the bridge (`agent_sense_bridge` with `start`), read
+`agent-sense/skills/messenger/SKILL.md`, and follow it from there. That first
+read is the entry point: the skill's own setup section takes over from the
+config onward, and every later session opened in this folder picks up the same
+file. To register the skills for `/skill:` discovery instead, open with
+`omo --skill agent-sense/skills/messenger --skill agent-sense/skills/memory-tidy`.
+
 Two things are OmO's rather than the sense's, and are below: where OmO loads an
 extension from, and the Herdr agent-state integration.
 
